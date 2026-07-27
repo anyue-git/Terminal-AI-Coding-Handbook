@@ -1,0 +1,97 @@
+name: Markdown Check
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - Appendix/自动检查报告.md
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  markdown-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Show Python version
+        run: python3 --version
+
+      - name: Run strict Markdown check and save output
+        id: markdown_check
+        shell: bash
+        run: |
+          set +e
+          python3 scripts/check_markdown.py --strict-warnings > markdown-check-output.txt 2>&1
+          status=$?
+          cat markdown-check-output.txt
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Build Markdown report
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          CHECK_STATUS: ${{ steps.markdown_check.outputs.status }}
+        run: |
+          if [ "$CHECK_STATUS" = "0" ]; then
+            result="通过"
+          else
+            result="发现错误或警告"
+          fi
+
+          {
+            echo '# Markdown 自动检查报告'
+            echo
+            echo "> 生成时间：$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+            echo "> 检查提交：\`${GITHUB_SHA}\`"
+            echo "> 结果：${result}"
+            echo
+            echo '执行命令：'
+            echo
+            echo '```bash'
+            echo 'python3 scripts/check_markdown.py --strict-warnings'
+            echo '```'
+            echo
+            echo '## 完整输出'
+            echo
+            echo '```text'
+            cat markdown-check-output.txt
+            echo '```'
+            echo
+            echo '## 说明'
+            echo
+            echo '- ERROR 会使工作流失败；'
+            echo '- WARN 在严格模式下也会使工作流失败；'
+            echo '- 外部网址默认不联网检查；'
+            echo '- 本报告由 GitHub Actions 自动生成。'
+          } > Appendix/自动检查报告.md
+
+      - name: Commit updated report
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          if git diff --quiet -- Appendix/自动检查报告.md; then
+            echo 'Report did not change.'
+            exit 0
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Appendix/自动检查报告.md
+          git commit -m '更新：刷新 Markdown 自动检查报告'
+          git push
+
+      - name: Fail when Markdown errors or warnings exist
+        if: steps.markdown_check.outputs.status != '0'
+        shell: bash
+        run: exit "${{ steps.markdown_check.outputs.status }}"

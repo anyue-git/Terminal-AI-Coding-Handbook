@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Editors
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local secrets
+.env
+.env.*
+!.env.example
+
+# Local check output
+markdown-check-output.txt
