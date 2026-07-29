@@ -2,299 +2,159 @@
 
 > **Terminal & AI Coding Handbook**
 >
-> Terminal · Shell · Git · SSH · Homebrew · Python · Docker · Claude Code · Codex CLI · Grok CLI · GPU 远程开发
+> Terminal · Shell · Git · SSH · Homebrew · Python · Docker · Claude Code · Codex CLI · Grok Build · 配置与凭证 · GPU 远程开发
 
-这是一套面向终端新手的实用手册，默认使用 **Mac** 作为日常设备，从最基础的目录、文件和快捷键开始，逐步讲到 Git、Python、Docker 和 AI 编程 CLI。
+这是一套写给终端新手的中文实用手册。默认读者日常使用 Mac，已经开始接触 Claude Code、Codex CLI、Grok Build 或其他 AI 编程工具，但对目录、Shell、Git、配置文件和远程 Linux 还不熟悉。全书从“我现在在哪台机器、哪个目录”开始，逐步讲到 Python 环境、Docker、AI Agent、配置与凭证管理，以及使用 Mac 控制 Ubuntu NVIDIA GPU 游戏本。
 
-Ubuntu、SSH、Tailscale、NVIDIA GPU 和远程训练属于后续扩展内容。没有 Ubuntu 游戏本或独立 GPU，也不影响阅读和使用前面的大部分章节。
+V2.0 的重写目标不是堆积更多命令，而是把知识放进完整场景。章节会说明命令在哪里运行、为什么运行、可能看到什么输出、怎样确认成功，以及路径、权限、配置或网络不符合预期时应从哪一层排查。涉及删除、覆盖、凭证、远程机器、Docker 数据和 Git 历史时，也会说明预演、备份与恢复边界。
 
-这本手册不追求收录所有命令，更关注一套能够真正落地的操作习惯：
+全书反复使用一条工作习惯：
 
 ```text
-先确认当前目录和环境
-→ 再限定任务范围
-→ 修改后运行真实验证
-→ 查看 diff
-→ 最后决定是否提交
+确认机器、用户和目录
+→ 明确目标、非目标和允许范围
+→ 先调查真实项目
+→ 小批修改
+→ 运行验证
+→ 阅读 Git diff
+→ 独立复核
+→ 人工决定提交和推送
 ```
 
----
+## 从哪里开始
 
-## 快速开始
+第一次打开终端，阅读[终端十五分钟上手](00-快速开始/01-终端十五分钟上手.md)。它会带你在独立练习目录中导航、创建文件、修改输入和停止前台程序。
 
-刚接触终端，可以从以下三个入口中选择：
+已经会使用 `cd` 和 `git status`，第一次接触 AI 编程工具，阅读[AI CLI 快速上手](00-快速开始/02-AI-CLI快速上手.md)。这一篇完成一个范围很小、能够检查结果的 Agent 任务。
 
-- [终端十五分钟上手](00-快速开始/01-终端十五分钟上手.md)  
-  快速掌握 `pwd`、`ls`、`cd`、常用快捷键、停止程序和基础 Git 检查。
+希望沿一条路线练习终端、Git、AI CLI 和人工提交，阅读[终端与 AI CLI 完整快速入门](Quickstart/终端与AI-CLI快速入门.md)。忘记快捷键或担心某条命令的影响时，查看[快捷键速查表](Appendix/快捷键速查表.md)和[危险命令清单](Appendix/危险命令清单.md)。
 
-- [AI CLI 快速上手](00-快速开始/02-AI-CLI快速上手.md)  
-  在正确目录中启动 Claude Code、Codex CLI 或 Grok CLI，完成第一次受控修改。
+## 全书路线
 
-- [终端与 AI CLI 完整快速入门](Quickstart/终端与AI-CLI快速入门.md)  
-  用一条完整路线串联终端、Git、AI CLI 和远程开发的基本方法。
+### Part 01–03：终端基础
 
-常用速查：
+建立 Terminal、Shell、zsh、目录、路径、文件操作、搜索、日志、管道、进程和快捷键的基本认识。
 
-- [快捷键速查表](Appendix/快捷键速查表.md)
-- [危险命令清单](Appendix/危险命令清单.md)
-- [术语表](Appendix/术语表.md)
-
----
-
-## 完整章节
-
-README 直接列出全部正式章节，便于第一次进入仓库时了解手册的完整范围。
-
-### Part 01：基础篇
-
-建立 Terminal、Shell、zsh、目录和路径的基本心智模型。
-
-- [01 为什么程序员离不开终端](Part-01-基础篇/01-为什么程序员离不开终端.md)
-- [02 Terminal 到底是什么](Part-01-基础篇/02-Terminal到底是什么.md)
-- [03 Shell 到底是什么](Part-01-基础篇/03-Shell到底是什么.md)
-- [04 zsh 到底是什么](Part-01-基础篇/04-zsh到底是什么.md)
-- [05 文件系统、目录与路径](Part-01-基础篇/05-文件系统目录与路径.md)
-
-### Part 02：终端命令
-
-学习文件导航、创建、复制、删除、搜索、日志、管道和进程管理。
-
-- [01 pwd、ls 与 cd](Part-02-终端命令/01-pwd-ls-cd.md)
-- [02 创建、复制、移动与删除](Part-02-终端命令/02-创建复制移动与删除.md)
-- [03 查看文本文件与日志](Part-02-终端命令/03-查看文本文件与日志.md)
-- [04 搜索文件与文本](Part-02-终端命令/04-搜索文件与文本.md)
-- [05 管道、重定向与命令组合](Part-02-终端命令/05-管道重定向与命令组合.md)
-- [06 进程、前台、后台与任务控制](Part-02-终端命令/06-进程前台后台与任务控制.md)
-
-### Part 03：Shell 快捷键
-
-解决长命令输入、整行删除、历史搜索和程序中断等高频问题。
-
-- [01 命令行编辑核心快捷键](Part-03-Shell快捷键/01-命令行编辑核心快捷键.md)
+- [Part 01：基础篇](SUMMARY.md#part-01基础篇)
+- [Part 02：终端命令](SUMMARY.md#part-02终端命令)
+- [Part 03：Shell 快捷键](SUMMARY.md#part-03shell-快捷键)
 
 ### Part 04：Git
 
-使用 Git 保存、比较、恢复和审查人工或 AI 产生的修改。
+学习工作区、暂存区、提交、分支、恢复、Worktree 和 Pull Request，让人工修改与 AI 修改都能被检查和回退。
 
-- [01 Git 心智模型](Part-04-Git/01-Git心智模型.md)
-- [02 日常提交与复核流程](Part-04-Git/02-日常提交与复核流程.md)
-- [03 分支、合并与安全恢复](Part-04-Git/03-分支合并与安全恢复.md)
-- [04 Pull Request 与多人协作](Part-04-Git/04-Pull-Request与多人协作.md)
+- [Git 心智模型](Part-04-Git/01-Git心智模型.md)
+- [日常提交与复核流程](Part-04-Git/02-日常提交与复核流程.md)
+- [分支、合并与安全恢复](Part-04-Git/03-分支合并与安全恢复.md)
+- [Pull Request 与多人协作](Part-04-Git/04-Pull-Request与多人协作.md)
 
-### Part 05：SSH
+### Part 05–08：开发基础设施
 
-连接远程 Ubuntu、传输文件、建立端口转发并排查连接问题。
+这一部分覆盖 Mac 和 Ubuntu 上最常见的开发环境：
 
-- [01 SSH 基础与首次连接](Part-05-SSH/01-SSH基础与首次连接.md)
-- [02 密钥登录与 SSH Config](Part-05-SSH/02-密钥登录与SSH-Config.md)
-- [03 scp、rsync 与端口转发](Part-05-SSH/03-scp-rsync与端口转发.md)
-- [04 SSH 故障排查](Part-05-SSH/04-SSH故障排查.md)
-
-### Part 06：Homebrew
-
-管理 Mac 上的命令行工具、PATH、软件版本和后台服务。
-
-- [01 Homebrew 与 PATH](Part-06-Homebrew/01-Homebrew与PATH.md)
-- [02 服务、版本与常见故障](Part-06-Homebrew/02-服务版本与常见故障.md)
-
-### Part 07：Python 环境
-
-理解 Python 解释器、pip、venv、Conda、uv 和依赖复现。
-
-- [01 Python 解释器与 pip 定位](Part-07-Python环境/01-Python解释器与pip定位.md)
-- [02 venv、Conda 与 uv 怎么选](Part-07-Python环境/02-venv-Conda与uv怎么选.md)
-- [03 依赖声明、锁定与环境复现](Part-07-Python环境/03-依赖声明锁定与环境复现.md)
-
-### Part 08：Docker
-
-理解镜像、容器、卷、网络、Compose 和 GPU 容器的边界。
-
-- [01 镜像、容器、卷与网络](Part-08-Docker/01-镜像容器卷与网络.md)
-- [02 Docker Desktop 与 Ubuntu Docker Engine](Part-08-Docker/02-Docker-Desktop与Ubuntu-Docker-Engine.md)
-- [03 Docker Compose 多服务项目](Part-08-Docker/03-Docker-Compose多服务项目.md)
-- [04 GPU 容器与权限边界](Part-08-Docker/04-GPU容器与权限边界.md)
+- [SSH](SUMMARY.md#part-05ssh)：远程登录、密钥、传输、隧道和故障排查；
+- [Homebrew](SUMMARY.md#part-06homebrew)：安装、PATH、服务和版本冲突；
+- [Python 环境](SUMMARY.md#part-07python-环境)：解释器、pip、venv、Conda、uv 和锁文件；
+- [Docker](SUMMARY.md#part-08docker)：镜像、容器、Volume、Compose 和 GPU 容器。
 
 ### Part 09：Claude Code
 
-围绕 Claude Code 客户端，讲解安装、模型接入、权限、会话、Hooks、MCP 和复杂任务工作流。
+覆盖客户端安装与认证、权限和 Sandbox、会话与记忆、Hooks、MCP、大项目工作流，以及 DeepSeek、企业 Gateway 和兼容供应商。
 
-- [01 安装、接入与启动](Part-09-Claude-Code/01-安装登录与启动.md)
-- [02 权限、审批与安全边界](Part-09-Claude-Code/02-权限审批与安全边界.md)
-- [03 会话、记忆、Hooks 与 MCP](Part-09-Claude-Code/03-会话记忆Hooks与MCP.md)
-- [04 大项目与多阶段任务工作流](Part-09-Claude-Code/04-大项目与多阶段任务工作流.md)
-- [05 接入 DeepSeek 与第三方供应商](Part-09-Claude-Code/05-接入DeepSeek与第三方供应商.md)
-
-Claude Code 可以使用 Anthropic 官方账户或 API，也可以接入受支持的云平台、DeepSeek 官方兼容接口、团队 LLM Gateway 或其他供应商。需要管理多套供应商配置时，也可以使用 CC Switch，具体使用方法可查阅 CC Switch 官方文档及本书相关章节。
+- [安装、登录与启动](Part-09-Claude-Code/01-安装登录与启动.md)
+- [权限、审批与安全边界](Part-09-Claude-Code/02-权限审批与安全边界.md)
+- [会话、记忆、Hooks 与 MCP](Part-09-Claude-Code/03-会话记忆Hooks与MCP.md)
+- [大项目与多阶段任务工作流](Part-09-Claude-Code/04-大项目与多阶段任务工作流.md)
+- [接入 DeepSeek 与第三方供应商](Part-09-Claude-Code/05-接入DeepSeek与第三方供应商.md)
 
 ### Part 10：Codex CLI
 
-学习 Codex CLI 的安装、Sandbox、审批、交互模式、自动化和 Git 协作。
+覆盖安装、ChatGPT/API 认证、Sandbox、审批、`AGENTS.md`、交互模式、`codex exec`、结构化输出、Review、会话恢复和 Git 协作。
 
-- [01 安装、登录与启动](Part-10-Codex-CLI/01-安装登录与启动.md)
-- [02 Sandbox、审批与配置](Part-10-Codex-CLI/02-Sandbox审批与配置.md)
-- [03 交互模式与自动化](Part-10-Codex-CLI/03-交互模式与自动化.md)
-- [04 Codex CLI 与 Git 协作案例](Part-10-Codex-CLI/04-Codex与Git协作案例.md)
+- [安装、登录与启动](Part-10-Codex-CLI/01-安装登录与启动.md)
+- [Sandbox、审批与配置](Part-10-Codex-CLI/02-Sandbox审批与配置.md)
+- [交互模式与自动化](Part-10-Codex-CLI/03-交互模式与自动化.md)
+- [Codex CLI 与 Git 协作案例](Part-10-Codex-CLI/04-Codex与Git协作案例.md)
 
-### Part 10B：Grok CLI
+### Part 10B：Grok Build
 
-学习 Grok CLI 的基础使用、权限、Sandbox、Headless、Worktree 和扩展系统。
+xAI 官方产品名为 Grok Build，终端命令为 `grok`。这一部分覆盖认证、Ask/Auto/Always-approve、Plan、Sandbox、Headless、Worktree、会话和扩展系统。目录名保留 `Grok-CLI` 是为了兼容现有路径。
 
-- [01 安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md)
-- [02 权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md)
-- [03 Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md)
+- [安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md)
+- [权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md)
+- [Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md)
+
+### Part 10C：配置、凭证与多实例
+
+这是 V2.0 新增核心模块。它解释配置、凭证、模型、Provider、Profile、实例和本地网关之间的区别，并拆解 Claude Code、Codex、CC Switch、ccswitch 与 Cockpit Tools 的实际配置链。
+
+- [先分清配置、凭证、供应商与实例](Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md)
+- [Codex 的 TOML、Profile 与凭证](Part-10C-配置凭证与多实例/02-Codex-TOML配置与凭证.md)
+- [Claude Code 的配置、凭证与网关](Part-10C-配置凭证与多实例/03-Claude-Code配置凭证与网关.md)
+- [CC Switch、ccswitch 与 Cockpit Tools](Part-10C-配置凭证与多实例/04-CC-Switch-ccswitch与Cockpit-Tools.md)
+
+读者应能判断一次切换究竟改变了模型、供应商、账号、Profile、Base URL，还是整套独立实例，并能在第三方工具失效时恢复原生配置。
 
 ### Part 11：GPU 远程开发
 
-这一部分属于可选扩展，适合希望用 Mac 负责日常开发、让 Ubuntu 或远程服务器负责 NVIDIA GPU 计算的读者。
+默认场景是一台日常使用的 Mac、一台安装 Ubuntu 24.04 的 NVIDIA 游戏本和一个自己管理的路由器。Mac 负责编辑、Git 和复核，Ubuntu 负责 Linux、CUDA 和长时间训练。
 
-- [01 Mac 与 Ubuntu 游戏本的局域网部署](Part-11-GPU远程开发/01-Mac与Ubuntu局域网部署.md)
-- [02 项目同步与目录规范](Part-11-GPU远程开发/02-项目同步与目录规范.md)
-- [03 tmux 与断线后继续训练](Part-11-GPU远程开发/03-tmux与断线续跑.md)
-- [04 NVIDIA 驱动、CUDA 与 PyTorch](Part-11-GPU远程开发/04-NVIDIA驱动-CUDA与PyTorch.md)
-- [05 Mac 与 Ubuntu 分别创建环境](Part-11-GPU远程开发/05-Mac与Ubuntu分别创建环境.md)
-- [06 异网安全连接](Part-11-GPU远程开发/06-异网安全连接.md)
-- [07 VS Code、AI CLI 与 GPU 协作](Part-11-GPU远程开发/07-VS-Code-AI-CLI与GPU协作.md)
-- [08 实验日志与 Checkpoint 管理](Part-11-GPU远程开发/08-实验日志与Checkpoint管理.md)
+内容包括：
+
+- 局域网 OpenSSH 与主机指纹；
+- rsync 与 Git 的同步边界；
+- tmux、日志与断线续跑；
+- NVIDIA Driver、CUDA Toolkit、Runtime 和 PyTorch；
+- Mac 与 Ubuntu 分别创建 Python 环境；
+- Tailscale 异网连接；
+- VS Code Remote SSH 与 AI CLI；
+- Run Directory、Checkpoint 和恢复测试。
+
+[查看 Part 11 全部章节](SUMMARY.md#part-11gpu-远程开发)
 
 ### Part 12：AI 开发工作流
 
-把不同 AI 编程工具统一到同一套调查、计划、实现、测试和复核流程中。
+最后一部分把不同 AI 客户端放进同一条可检查的闭环，覆盖 Prompt、基础设施任务、权限、安全、复杂任务、多 Agent 和完整 GPU 案例。
 
-- [01 通用 AI 编程闭环](Part-12-AI开发工作流/01-通用AI编程闭环.md)
-- [02 通用 Prompt 模板库](Part-12-AI开发工作流/02-通用Prompt模板库.md)
-- [03 基础设施与远程开发 Prompt 模板](Part-12-AI开发工作流/03-基础设施Prompt模板.md)
-- [04 权限与安全边界总览](Part-12-AI开发工作流/04-权限与安全边界总览.md)
-- [05 复杂任务拆分与独立复核](Part-12-AI开发工作流/05-复杂任务拆分与独立复核.md)
-- [06 Claude Code、Codex CLI 与 Grok CLI 对照协作](Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md)
-- [07 Mac 到 Ubuntu GPU 的端到端案例](Part-12-AI开发工作流/07-Mac到Ubuntu-GPU端到端案例.md)
+- [通用 AI 编程闭环](Part-12-AI开发工作流/01-通用AI编程闭环.md)
+- [通用 Prompt 模板库](Part-12-AI开发工作流/02-通用Prompt模板库.md)
+- [基础设施与远程开发 Prompt](Part-12-AI开发工作流/03-基础设施Prompt模板.md)
+- [权限与安全边界总览](Part-12-AI开发工作流/04-权限与安全边界总览.md)
+- [复杂任务拆分与独立复核](Part-12-AI开发工作流/05-复杂任务拆分与独立复核.md)
+- [Claude Code、Codex CLI 与 Grok Build 对照协作](Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md)
+- [Mac 到 Ubuntu GPU 的端到端案例](Part-12-AI开发工作流/07-Mac到Ubuntu-GPU端到端案例.md)
 
-### 附录与维护
+## 默认环境与安全边界
 
-- [快捷键速查表](Appendix/快捷键速查表.md)
-- [危险命令清单](Appendix/危险命令清单.md)
-- [术语表](Appendix/术语表.md)
-- [版本化工具核对表](Appendix/版本化工具核对表.md)
-- [内容审查记录](Appendix/内容审查记录.md)
-- [更新记录](Appendix/更新记录.md)
-- [自动检查报告](Appendix/自动检查报告.md)
+本书优先使用 macOS 和 zsh 展示日常操作，再扩展到 Ubuntu、SSH、Tailscale、Docker Engine、NVIDIA CUDA 和远程训练。不同平台的参数和路径不同时，章节会单独标注。Mac 的 `.venv`、可执行文件和 AI CLI 状态目录不能直接复制到 Ubuntu 后继续使用。
 
----
+书中不会提供真实 API Key、Session Token、Cookie、Refresh Token、登录缓存或 SSH 私钥。涉及 `auth.json`、Keychain、Keyring、`.credentials.json` 和第三方账号工具时，只说明职责、位置、权限和活动来源，不展示秘密正文。
 
-## 默认环境与可选扩展
-
-本书默认设备环境为：
-
-```text
-Mac
-```
-
-因此，终端基础、zsh、Homebrew、Git、Python、Docker Desktop 和 AI CLI 章节都优先从 Mac 用户的实际体验出发。
-
-后续内容会根据需要扩展到：
-
-- Ubuntu 或其他 Linux 环境；
-- SSH 与远程服务器；
-- Tailscale 异网组网；
-- NVIDIA GPU、CUDA 和 PyTorch；
-- tmux、训练日志和 checkpoint；
-- Docker Engine 与 GPU 容器。
-
-这些扩展章节彼此可以独立使用，不要求读者同时拥有 Mac、Ubuntu 游戏本、独立路由器和 NVIDIA GPU。
-
----
-
-## 你可以建立怎样的工作流
-
-只使用一台 Mac，也可以完成：
-
-```text
-进入项目目录
-→ 创建 Git 分支
-→ 使用 AI CLI 调查和修改
-→ 运行测试
-→ 检查 git diff
-→ 提交或继续修改
-```
-
-需要远程计算时，再扩展为：
-
-```text
-Mac 上开发和复核
-→ SSH 或 Tailscale 连接远程 Linux
-→ Git 或 rsync 传输项目
-→ tmux 中运行长任务
-→ 保存日志、配置和 checkpoint
-→ 把结果同步回 Mac
-```
-
----
-
-## 这本手册适合谁
-
-- 日常主力设备是 Mac；
-- 对终端、Shell 或 Linux 经验有限；
-- 正在使用 Claude Code、Codex CLI 或 Grok CLI；
-- 希望学习 Git、Python、Docker 等开发基础设施；
-- 可能需要连接 Ubuntu、服务器或 GPU 机器；
-- 希望理解命令为什么这样工作，而不是只复制粘贴；
-- 希望 AI 帮助编程，同时保留对权限、测试和提交的控制。
-
----
-
-## 写作原则
-
-### 先说明上下文，再给命令
-
-每条重要命令尽量回答：
-
-```text
-在哪台机器运行
-当前目录是什么
-会读取或修改哪些内容
-怎样确认成功
-失败后怎样停止或恢复
-```
-
-### 区分稳定知识与版本化知识
-
-路径、Shell 和 Git 的基本模型相对稳定；Claude Code、Codex CLI、Grok CLI、Docker、uv、Tailscale、PyTorch 和模型接口更新较快。相关章节会保留稳定心智模型，同时要求结合当前官方文档和本机 `--help` 验证。
-
-### 修改结果必须能够检查
-
-AI CLI 完成修改后，至少查看：
-
-```bash
-git status --short
-git diff --name-status
-git diff --stat
-git diff
-```
-
-再运行项目规定的测试。工具给出的完成总结不能代替真实文件差异和测试结果。
-
----
+第三方 Provider、Gateway、MCP、Hook、Plugin、Skill 和配置管理工具会扩大数据与权限链。能够运行不等于官方支持，也不等于上游账号、计费和数据处理没有额外风险。
 
 ## 项目状态
 
-主体章节已经完成第一轮系统重写，目前覆盖：
+V1.0 已作为公共历史版本保留。V2.0 主体教程化重写、技术终审和私有源仓库合并已经完成：
 
-- 终端、Shell、Git、SSH、Homebrew、Python 和 Docker；
-- Claude Code、Codex CLI 和 Grok CLI；
-- 多种 Claude Code 模型与供应商接入方式；
-- Mac 与远程 Linux / GPU 协作；
-- 通用 AI 编程闭环和 Prompt 模板；
-- Markdown 结构、本地链接和目录引用自动检查。
+```text
+私有源仓库：anyue-git/Terminal-AI-Coding-Handbook
+V2.0 Pull Request：#2
+状态：已通过 squash merge 合入 main
+合并提交：abe389994f1841c90f35c670b16420f18859c9ba
+```
 
-自动检查报告位于 [Appendix/自动检查报告.md](Appendix/自动检查报告.md)。结构检查可以发现链接、标题和代码块问题，但不能替代外部链接检查、技术事实核对和真实环境测试。
+当前仓库包含 74 个 Markdown 文件。严格自动检查验证 UTF-8、标题、代码块、内部链接和目录引用；合并前最终 Markdown Check #176 成功。自动检查不能代替官方文档核对、外部链接检查、敏感信息扫描和真实设备测试。
 
----
+下一步是将经过审查的 V2.0 内容作为正常升级提交同步到现有公共仓库，保留 V1.0 提交历史，并创建 V2.0 标签与发布说明。许可证尚未由作者明确选择，因此当前不会自动加入许可证文件。
 
-## 项目维护
+维护入口：
 
+- [目录](SUMMARY.md)
 - [全书路线图](ROADMAP.md)
 - [写作规范与内容审查标准](CONTRIBUTING.md)
 - [内容审查记录](Appendix/内容审查记录.md)
 - [更新记录](Appendix/更新记录.md)
+- [版本化工具核对表](Appendix/版本化工具核对表.md)
 - [自动检查报告](Appendix/自动检查报告.md)
 
-手册中的命令必须结合自己的系统、目录、权限、软件版本、网络环境和备份情况执行。涉及删除、覆盖、管理员权限、远程机器、Git 历史和凭据时，先确认影响范围与恢复方式。
+执行任何命令前，请结合自己的机器、目录、权限、软件版本、网络和备份情况判断。涉及删除、覆盖、管理员权限、远程机器、Git 历史和凭据时，应先确认影响范围与恢复方式。

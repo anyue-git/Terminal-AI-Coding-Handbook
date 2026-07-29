@@ -1,375 +1,23 @@
-# 终端与 AI CLI 快速入门
+# 终端与 AI CLI 完整快速入门
 
-> 适合第一次打开终端，或者隔了一段时间想快速找回手感的读者。
+> 适合第一次完整练习“终端 + Git + AI 编程工具”的读者。
 >
-> 预计阅读和练习时间：20–30 分钟。
+> 预计时间：30–45 分钟。练习只使用 Python 标准库，不需要安装第三方依赖。
 
-这篇只带你走一遍最短可用路线：知道命令在哪里执行，进入项目，用 Git 留好退路，启动一个 AI CLI，最后亲自检查它改了什么。
+这篇教程会在主目录下创建一个很小的 Python 项目，先由你运行和提交基线，再让 Claude Code、Codex CLI 或 Grok CLI 完成一个范围明确的修改。最后，你会亲自运行测试并查看 Git diff。整个过程不接触真实项目、账号配置或远程服务器，因此适合第一次练习。
 
-更短的版本在这里：
+## 1. 开始前检查工具
 
-- [终端十五分钟上手](../00-快速开始/01-终端十五分钟上手.md)
-- [AI CLI 快速上手](../00-快速开始/02-AI-CLI快速上手.md)
-
----
-
-## 1. Terminal、Shell 和 CLI 到底是什么关系
-
-可以先这样理解：
-
-```text
-Terminal
-→ 显示文字、接收键盘输入的窗口
-
-Shell
-→ 理解并执行命令的程序，macOS 默认通常是 zsh
-
-CLI
-→ 通过命令行使用的具体工具
-```
-
-例如：
+在 Mac 终端执行：
 
 ```bash
-cd ~/Projects
+python3 --version
+git --version
 ```
 
-通常由 zsh 解释；而下面这些命令会启动不同工具：
+你应看到 Python 和 Git 的版本信息。如果出现 `command not found`，先处理对应工具的安装或 PATH，不要继续复制后面的命令。
 
-```bash
-git status
-claude
-codex
-grok
-```
-
-进入 Claude Code、Codex CLI 或 Grok CLI 后，你面对的不再只是普通 Shell，而是一个能读取文件、修改代码和执行命令的编程 Agent。
-
-详细阅读：
-
-- [Terminal 到底是什么](../Part-01-基础篇/02-Terminal到底是什么.md)
-- [Shell 到底是什么](../Part-01-基础篇/03-Shell到底是什么.md)
-- [zsh 到底是什么](../Part-01-基础篇/04-zsh到底是什么.md)
-
----
-
-## 2. 每次动手前，先回答三个问题
-
-```text
-我在哪台机器？
-我在哪个目录？
-这条命令会读取或修改什么？
-```
-
-检查机器、用户和目录：
-
-```bash
-hostname
-whoami
-pwd
-```
-
-查看当前目录：
-
-```bash
-ls
-ls -la
-```
-
-如果通过 SSH 登录 Ubuntu，窗口可能和 Mac 上长得差不多，但命令已经在远程机器执行。终端不会主动提醒你“现在踩的是别人家的地板”，所以 `hostname` 和 `pwd` 很值得多看一眼。
-
----
-
-## 3. 怎样在目录之间移动
-
-进入项目：
-
-```bash
-cd ~/Projects/my-project
-```
-
-回到上一级：
-
-```bash
-cd ..
-```
-
-返回家目录：
-
-```bash
-cd ~
-```
-
-回到刚才所在的目录：
-
-```bash
-cd -
-```
-
-目录名有空格时使用引号：
-
-```bash
-cd "My Project"
-```
-
-每次进入重要目录后，可以立即确认：
-
-```bash
-pwd
-ls -la
-```
-
-详细阅读：
-
-- [文件系统、目录与路径](../Part-01-基础篇/05-文件系统目录与路径.md)
-- [pwd、ls 与 cd](../Part-02-终端命令/01-pwd-ls-cd.md)
-
----
-
-## 4. 先记住几个真正高频的快捷键
-
-在 macOS 默认 zsh 的常见 Emacs 键位中：
-
-```text
-Ctrl + A
-→ 移到行首
-
-Ctrl + E
-→ 移到行尾
-
-Ctrl + W
-→ 删除光标左侧一个单词
-
-Ctrl + U
-→ 删除当前整行
-
-Ctrl + C
-→ 中断当前前台程序
-
-Ctrl + R
-→ 搜索历史命令
-
-方向键上 / 下
-→ 浏览历史命令
-```
-
-快捷键会受到 Vi 模式、插件、tmux 和 AI CLI 全屏界面的影响。想确认本机 zsh 的实际绑定，可以运行：
-
-```bash
-bindkey '^U'
-bindkey '^W'
-```
-
-在 AI CLI 里按键可能由工具自己的界面处理，不一定继续遵循 zsh。
-
-详细阅读：
-
-- [命令行编辑核心快捷键](../Part-03-Shell快捷键/01-命令行编辑核心快捷键.md)
-- [快捷键速查表](../Appendix/快捷键速查表.md)
-
----
-
-## 5. 文件操作只需要先掌握这一组
-
-创建空文件：
-
-```bash
-touch notes.md
-```
-
-创建目录：
-
-```bash
-mkdir practice
-mkdir -p project/src
-```
-
-查看短文件：
-
-```bash
-cat notes.md
-```
-
-分页查看长文件：
-
-```bash
-less README.md
-```
-
-在 `less` 中：
-
-```text
-q       退出
-/word   搜索 word
-n       跳到下一个匹配
-```
-
-复制：
-
-```bash
-cp notes.md notes-backup.md
-```
-
-移动或重命名：
-
-```bash
-mv notes.md project-notes.md
-```
-
-按名称找文件：
-
-```bash
-find . -name 'README.md'
-```
-
-搜索项目文字：
-
-```bash
-rg "TODO"
-```
-
-没有安装 ripgrep 时，可以使用：
-
-```bash
-grep -R "TODO" .
-```
-
-查看某个命令最终从哪里运行：
-
-```bash
-type -a python
-type -a git
-type -a claude
-```
-
-详细阅读：
-
-- [创建、复制、移动与删除](../Part-02-终端命令/02-创建复制移动与删除.md)
-- [查看文本文件与日志](../Part-02-终端命令/03-查看文本文件与日志.md)
-- [搜索文件与文本](../Part-02-终端命令/04-搜索文件与文本.md)
-
----
-
-## 6. 删除和程序中断要分清
-
-删除文件：
-
-```bash
-rm FILE_NAME
-```
-
-删除前先确认当前目录和目标：
-
-```bash
-pwd
-ls -la TARGET
-```
-
-递归删除、通配符、管理员权限和项目外路径都需要额外小心。不要在没看懂路径时复制一条气势很足的删除命令；终端不会因为你是新手就自动把文件放回回收站。
-
-程序卡住时，先按：
-
-```text
-Ctrl + C
-```
-
-不小心按了 `Ctrl + Z` 时，程序通常只是暂停。查看任务：
-
-```bash
-jobs
-```
-
-恢复到前台：
-
-```bash
-fg
-```
-
-详细阅读：
-
-- [危险命令清单](../Appendix/危险命令清单.md)
-- [进程、前台、后台与任务控制](../Part-02-终端命令/06-进程前台后台与任务控制.md)
-
----
-
-## 7. 让 Git 记录项目发生了什么
-
-进入项目后先运行：
-
-```bash
-git status
-git branch --show-current
-```
-
-为任务创建分支：
-
-```bash
-git switch -c task/fix-parser
-```
-
-分支名尽量写任务，不要只写 `ai-test-final-2`。未来的你看到后者，通常只能推断当时已经有点急了。
-
-AI 修改后检查：
-
-```bash
-git status --short
-git diff --name-status
-git diff --stat
-git diff
-```
-
-其中：
-
-- `git status` 告诉你哪些文件变了；
-- `git diff --stat` 显示改动规模；
-- `git diff` 显示具体内容。
-
-只暂存确认过的文件：
-
-```bash
-git add src/example.py tests/test_example.py
-```
-
-检查暂存区：
-
-```bash
-git diff --cached --name-status
-git diff --cached
-```
-
-不推荐新手默认使用：
-
-```bash
-git add .
-```
-
-它可能把缓存、日志和无关修改一起放进提交。
-
-详细阅读：
-
-- [Git 心智模型](../Part-04-Git/01-Git心智模型.md)
-- [日常提交与复核流程](../Part-04-Git/02-日常提交与复核流程.md)
-
----
-
-## 8. 启动 AI CLI 前的固定动作
-
-进入项目：
-
-```bash
-cd PROJECT_PATH
-```
-
-确认环境：
-
-```bash
-hostname
-pwd
-git status
-git branch --show-current
-```
-
-确认工具路径：
+再检查至少一个 AI CLI 是否可用：
 
 ```bash
 type -a claude
@@ -377,124 +25,245 @@ type -a codex
 type -a grok
 ```
 
-不要从家目录、下载目录、云盘根目录或同时包含多个仓库的父目录启动 Agent。启动目录会直接影响它能看到什么。
+不要求三个都安装。这次只选择其中一个。Claude Code、Codex CLI 和 Grok CLI 的安装、登录与模型接入方式不同，本练习假设你已经能正常启动其中一个；配置、凭证和供应商切换见 [Part 10C](../Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md)。
 
----
+## 2. 创建独立练习项目
 
-## 9. Claude Code 不只有官方订阅这一种接入方式
+先确认当前机器和目录：
 
-启动命令是：
+```bash
+hostname
+whoami
+pwd
+```
+
+建立练习目录：
+
+```bash
+mkdir -p ~/terminal-practice
+cd ~/terminal-practice
+mkdir ai-cli-demo
+cd ai-cli-demo
+pwd
+```
+
+如果 `mkdir ai-cli-demo` 提示目录已经存在，不要覆盖旧练习。改用另一个名称，例如：
+
+```bash
+mkdir ai-cli-demo-2
+cd ai-cli-demo-2
+```
+
+最终的 `pwd` 应类似：
+
+```text
+/Users/YOUR_NAME/terminal-practice/ai-cli-demo
+```
+
+后面的文件都应该出现在这个目录中。路径不符合预期时，先停下来检查，不要继续创建文件。
+
+## 3. 手工建立一个最小 Python 项目
+
+创建 `greeting.py`：
+
+```bash
+cat > greeting.py <<'PY'
+def greet(name: str) -> str:
+    """Return a short greeting for the supplied name."""
+    return f"Hello, {name}!"
+PY
+```
+
+创建测试文件：
+
+```bash
+cat > test_greeting.py <<'PY'
+import unittest
+
+from greeting import greet
+
+
+class GreetingTests(unittest.TestCase):
+    def test_normal_name(self) -> None:
+        self.assertEqual(greet("Alice"), "Hello, Alice!")
+
+
+if __name__ == "__main__":
+    unittest.main()
+PY
+```
+
+检查目录和文件正文：
+
+```bash
+ls -la
+cat greeting.py
+cat test_greeting.py
+```
+
+运行测试：
+
+```bash
+python3 -m unittest -v
+```
+
+正常结果类似：
+
+```text
+test_normal_name (test_greeting.GreetingTests.test_normal_name) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+OK
+```
+
+这一步很重要。后面如果测试失败，你需要知道问题是 AI 修改造成的，还是项目在修改前就无法运行。
+
+## 4. 用 Git 保存修改前的基线
+
+初始化仓库：
+
+```bash
+git init
+git status
+```
+
+Git 会显示两个未跟踪文件。只暂存这两个文件：
+
+```bash
+git add greeting.py test_greeting.py
+git diff --cached --name-status
+git diff --cached
+```
+
+确认暂存区只有刚创建的代码和测试，再提交：
+
+```bash
+git commit -m "建立问候函数练习基线"
+```
+
+如果 Git 提示没有设置用户名或邮箱，按照提示配置自己的提交身份后重新提交。不要随便复制别人的邮箱，也不要把 API 账号邮箱误当成必须使用的 Git 身份。
+
+提交后检查：
+
+```bash
+git status
+git log --oneline -1
+```
+
+工作区应当干净，并显示刚才的基线提交。
+
+## 5. 建立任务分支
+
+这次要让 Agent 完成的任务是：去掉姓名两侧的空格，并拒绝空姓名。创建分支：
+
+```bash
+git switch -c fix/normalize-name
+```
+
+确认状态：
+
+```bash
+git branch --show-current
+git status
+```
+
+你现在拥有一个清楚的起点。即使后面的修改不满意，也可以通过 Git 看出它与基线的差异。
+
+## 6. 启动一个 AI CLI
+
+在当前项目目录中运行一个工具：
 
 ```bash
 claude
 ```
 
-Claude Code 是客户端。真正处理请求的模型后端，可以根据条件选择：
-
-- Anthropic 官方账户或官方 API；
-- DeepSeek 官方提供的 Anthropic 兼容接口；
-- 团队部署的 LLM Gateway；
-- 通过 CC Switch 管理的正规第三方供应商。
-
-部分读者无法或不打算使用 Anthropic 官方订阅，这并不代表 Claude Code 客户端完全不能用。DeepSeek 官方文档提供了接入 Claude Code 的环境变量配置；CC Switch 则适合管理多个供应商，但它只是配置切换工具，不替任何中转商担保。
-
-无论选择哪种后端，都要知道：项目内容、Prompt 和终端输出可能发送给实际供应商。直连模型厂商和使用 API 中转商，不是同一层信任关系。
-
-先阅读：
-
-- [Claude Code：安装、登录与启动](../Part-09-Claude-Code/01-安装登录与启动.md)
-- [Claude Code：接入 DeepSeek 与第三方供应商](../Part-09-Claude-Code/05-接入DeepSeek与第三方供应商.md)
-
-接入完成后，第一条任务先只读：
-
-```text
-先不要修改文件、安装依赖或执行 Git 写操作。
-
-请检查当前目录、Git 状态、README、项目规则、依赖文件和测试入口。
-说明：
-1. 项目入口；
-2. 任务可能涉及的文件；
-3. 测试方式；
-4. 当前未提交修改；
-5. 仍然不确定的地方。
-
-重要结论给出文件路径。
-```
-
----
-
-## 10. Codex CLI 和 Grok CLI 怎样快速开始
-
-Codex CLI：
+或：
 
 ```bash
 codex
 ```
 
-Grok CLI：
+或：
 
 ```bash
 grok
 ```
 
-三个工具都应从同一原则起步：先只读调查，再限制文件范围。具体权限名称、登录方式和自动化参数变化较快，应查看当前版本：
-
-```bash
-codex --help
-grok --help
-```
-
-详细阅读：
-
-- [Codex CLI：安装、登录与启动](../Part-10-Codex-CLI/01-安装登录与启动.md)
-- [Codex CLI：Sandbox、审批与配置](../Part-10-Codex-CLI/02-Sandbox审批与配置.md)
-- [Grok CLI：安装、登录与基础使用](../Part-10B-Grok-CLI/01-安装登录与基础使用.md)
-- [Grok CLI：权限、Sandbox 与配置](../Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md)
-
-一次只让一个 Agent 修改同一工作区。多个工具同时改代码，很容易把协作现场变成多人抢同一支笔。
-
----
-
-## 11. 一份三个工具都能用的任务模板
+进入 Agent 界面后，先只做调查。输入：
 
 ```text
-目标：
-[写清楚要解决的问题]
+当前阶段只读，不要修改文件、安装依赖、访问外部服务或执行 Git 写操作。
 
-当前阶段：
-先只读调查，不要修改文件。
+请检查当前目录、Git 状态、greeting.py 和 test_greeting.py，并回答：
+1. 当前函数做什么；
+2. 现有测试覆盖什么；
+3. 项目怎样运行测试；
+4. 当前工作区是否干净；
+5. 如果要处理姓名两侧空格和空姓名，需要修改哪些文件。
 
-请检查：
-- 当前目录和 Git 状态；
-- 项目规则与 README；
-- 与任务相关的实现；
-- 测试入口。
-
-计划中写明：
-- 允许修改的文件；
-- 每个文件为什么要改；
-- 验证命令；
-- 风险；
-- 停止条件。
-
-禁止：
-- 修改范围外文件；
-- 安装依赖；
-- 读取凭据；
-- 删除数据或未跟踪文件；
-- 执行 git add、commit 或 push。
-
-确认计划后，只完成一个可验证步骤。
-完成后汇报修改文件、执行命令、测试结果、未验证内容和风险。
+结论附上文件路径，不要开始修改。
 ```
 
-Prompt 不需要写成法律合同，但目标、范围和验证方式不能全靠 Agent 猜。
+Agent 应当找到两个文件，并识别 `python3 -m unittest -v` 或等价测试方式。如果它开始讨论不存在的框架、数据库或依赖，说明调查方向不对，应先纠正。
 
----
+## 7. 给出明确任务和验收方式
 
-## 12. AI 说“完成”以后该做什么
+调查正确后，输入：
 
-暂停或退出 Agent，然后运行：
+```text
+任务目标：改进 greet(name) 的输入处理。
+
+要求：
+1. 去掉 name 两侧的空白字符；
+2. 去除空白后如果姓名为空，抛出 ValueError；
+3. 正常姓名仍返回 "Hello, NAME!"；
+4. 为两侧空格和空姓名补充测试。
+
+允许修改：
+- greeting.py
+- test_greeting.py
+
+禁止：
+- 修改其他文件；
+- 安装依赖；
+- 删除文件；
+- 访问项目外目录或网络；
+- 执行 git add、commit 或 push。
+
+先给出一个简短计划，不要立即修改。计划说明准备增加哪些测试、如何修改函数，以及最终运行什么命令验收。
+```
+
+计划应当围绕两个文件和两类新测试展开。若 Agent 建议引入外部库、重构项目结构或修改与任务无关的内容，可以直接要求它缩小范围。
+
+## 8. 让 Agent 分两步完成修改
+
+先让它只补测试：
+
+```text
+现在只修改 test_greeting.py：
+- 增加一个姓名两侧有空格的测试；
+- 增加一个空字符串或纯空白姓名应抛出 ValueError 的测试。
+
+不要修改 greeting.py。完成后运行测试，报告实际命令和失败原因，然后停止。
+```
+
+此时测试应该失败，因为实现尚未改变。失败并不代表 Agent 做错了；关键是失败原因是否正好对应新要求。
+
+确认测试有效后，再输入：
+
+```text
+现在允许修改 greeting.py，只实现刚才测试要求的行为，不做其他重构。
+完成后重新运行全部 unittest，报告命令、测试数量、退出状态和未验证内容。
+不要提交或推送。
+```
+
+Agent 完成后，先不要直接接受“任务完成”的总结。退出或暂停 Agent，回到普通 Shell 检查真实文件。
+
+## 9. 查看实际改动
+
+运行：
 
 ```bash
 git status --short
@@ -503,116 +272,117 @@ git diff --stat
 git diff
 ```
 
-检查：
-
-- 是否修改范围外文件；
-- 是否出现意外删除；
-- 是否改动依赖或锁文件；
-- 是否生成日志、缓存或大型文件；
-- 是否加入密码、Token、私钥或真实内部地址；
-- 测试是否被削弱；
-- 是否存在大范围无关格式化。
-
-再运行项目的真实测试，例如：
-
-```bash
-python -m pytest
-```
-
-实际命令应以项目 README 和配置文件为准。
-
-测试记录至少写明：
+正常情况下，只应看到：
 
 ```text
-执行命令：
-退出状态：
-通过与失败数量：
-未运行部分：
-环境限制：
+greeting.py
+test_greeting.py
 ```
 
-Agent 的总结是说明，测试和 diff 才是证据。
+阅读 diff 时检查：
 
----
+- 是否确实只改了两个允许文件；
+- 测试是否覆盖空格和空姓名；
+- `ValueError` 是否只在清理后姓名为空时触发；
+- 正常姓名的原行为是否保留；
+- 有没有调试输出、无关格式化或额外文件。
 
-## 13. Mac 连接 Ubuntu GPU 机器
+一个合理实现可能使用 `strip()` 清理输入，但不要只因为看见熟悉的方法就跳过测试。代码阅读和运行结果是两种不同证据。
 
-已经配置局域网或安全组网后：
+## 10. 亲自运行验收
+
+执行：
 
 ```bash
-ssh gpu-laptop
+python3 -m unittest -v
 ```
 
-先确认远程机器：
+你应看到三个或更多测试通过，具体名称取决于 Agent 如何命名。还可以手工验证：
 
 ```bash
-hostname
-whoami
-pwd
+python3 - <<'PY'
+from greeting import greet
+
+print(greet("  Alice  "))
+try:
+    greet("   ")
+except ValueError as exc:
+    print(type(exc).__name__, str(exc))
+PY
+```
+
+输出应包含：
+
+```text
+Hello, Alice!
+ValueError ...
+```
+
+错误消息的具体文字可以不同，但异常类型应符合要求。
+
+## 11. 决定是否提交
+
+确认 diff 和测试结果后，只暂存目标文件：
+
+```bash
+git add greeting.py test_greeting.py
+git diff --cached --name-status
+git diff --cached
+```
+
+暂存区正确后提交：
+
+```bash
+git commit -m "规范化问候函数的姓名输入"
+```
+
+最后查看：
+
+```bash
 git status
+git log --oneline --decorate -3
 ```
 
-长时间训练使用 tmux：
+现在仓库中应当有一个基线提交和一个任务提交。你已经完整走过一次：建立项目、运行基线、创建分支、让 Agent 调查、限定任务、分步修改、查看 diff、运行测试和人工提交。
+
+## 12. 练习中最常见的偏差
+
+### Agent 修改了范围外文件
+
+先不要暂存。运行：
 
 ```bash
-tmux new -s train
+git status --short
+git diff --name-status
 ```
 
-检查 GPU：
+让 Agent 解释为什么修改这些文件，或在确认不需要保留后人工恢复。不要使用会一次丢弃全部工作区变化的命令来省事。
 
-```bash
-nvidia-smi
-```
+### 测试在修改前就失败
 
-`nvidia-smi` 正常不等于当前 Python 环境一定能使用 GPU。还需要检查 PyTorch 或其他框架。
+回到基线提交查看测试环境，确认 Python 版本和运行命令。没有可用基线时，很难证明新失败来自本次修改。
 
-tmux 可以防止 SSH 断开直接结束训练，但机器关机、进程崩溃和磁盘写满仍会终止任务。恢复训练需要 checkpoint，不是靠 tmux 施魔法。
+### Agent 宣称测试通过，但没有命令或结果
 
-详细阅读：
+自己运行测试。总结中的“已验证”不能代替真实命令、退出状态和输出。
 
-- [SSH 基础与首次连接](../Part-05-SSH/01-SSH基础与首次连接.md)
-- [Mac 与 Ubuntu 局域网部署](../Part-11-GPU远程开发/01-Mac与Ubuntu局域网部署.md)
-- [Mac 到 Ubuntu GPU 的端到端案例](../Part-12-AI开发工作流/07-Mac到Ubuntu-GPU端到端案例.md)
+### AI CLI 请求访问主目录或凭证
 
----
+本练习不需要这些权限。拒绝请求并重新限定项目目录。配置文件、OAuth 缓存和 API Key 不属于代码任务的默认阅读范围。
 
-## 14. 最短记忆卡片
+### 想同时启动多个 Agent
 
-```text
-看机器：hostname
-看位置：pwd
-看文件：ls -la
-进目录：cd PATH
-回上级：cd ..
-看长文件：less FILE
-找文字：rg TEXT
-中断程序：Ctrl + C
-看 Git：git status
-看修改：git diff
-连远程：ssh HOST
-保持任务：tmux
-Claude Code：claude
-Codex CLI：codex
-Grok CLI：grok
-```
+同一工作区中的多个 Agent 会共享文件状态。第一次练习只使用一个；需要并行工作时，应先学习 Git worktree、独立分支或隔离实例，而不是简单打开多个窗口。
 
-使用 AI CLI：
+## 13. 下一步怎么学
 
-```text
-先调查
-→ 定范围
-→ 改一小步
-→ 跑测试
-→ 看 diff
-→ 人工决定是否提交
-```
+完成练习后，可以按需要继续阅读：
 
----
-
-## 下一步阅读
-
-- [全书目录](../SUMMARY.md)
-- [危险命令清单](../Appendix/危险命令清单.md)
+- [Terminal 到底是什么](../Part-01-基础篇/02-Terminal到底是什么.md)
+- [`pwd`、`ls` 与 `cd`](../Part-02-终端命令/01-pwd-ls-cd.md)
+- [Git 心智模型](../Part-04-Git/01-Git心智模型.md)
 - [通用 AI 编程闭环](../Part-12-AI开发工作流/01-通用AI编程闭环.md)
-- [权限与安全边界总览](../Part-12-AI开发工作流/04-权限与安全边界总览.md)
-- [Claude Code、Codex CLI 与 Grok CLI 怎么选](../Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md)
+- [Codex 的 TOML、Profile 与凭证](../Part-10C-配置凭证与多实例/02-Codex-TOML配置与凭证.md)
+- [Claude Code 的配置、凭证与网关](../Part-10C-配置凭证与多实例/03-Claude-Code配置凭证与网关.md)
+
+不要急着删除 `~/terminal-practice/ai-cli-demo`。保留这个小仓库，后面可以继续练习分支、恢复、Pull Request、不同 AI CLI 的行为差异和配置切换。
