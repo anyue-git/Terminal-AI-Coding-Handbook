@@ -12,6 +12,7 @@
 
 - [项目介绍](README.md)
 - [全书路线图](ROADMAP.md)
+- [V2.0 发布说明](RELEASE_NOTES_V2.0.md)
 - [写作规范与内容审查标准](CONTRIBUTING.md)
 
 ## Part 01：基础篇
@@ -69,7 +70,7 @@
 
 ## Part 09：Claude Code
 
-- [01 安装、接入与启动](Part-09-Claude-Code/01-安装登录与启动.md)
+- [01 安装、登录与启动](Part-09-Claude-Code/01-安装登录与启动.md)
 - [02 权限、审批与安全边界](Part-09-Claude-Code/02-权限审批与安全边界.md)
 - [03 会话、记忆、Hooks 与 MCP](Part-09-Claude-Code/03-会话记忆Hooks与MCP.md)
 - [04 大项目与多阶段任务工作流](Part-09-Claude-Code/04-大项目与多阶段任务工作流.md)
@@ -82,13 +83,22 @@
 - [03 交互模式与自动化](Part-10-Codex-CLI/03-交互模式与自动化.md)
 - [04 Codex CLI 与 Git 协作案例](Part-10-Codex-CLI/04-Codex与Git协作案例.md)
 
-## Part 10B：Grok CLI
+## Part 10B：Grok Build
 
-> xAI 官方产品名为 Grok Build，终端命令为 `grok`。
+> xAI 官方产品名为 Grok Build，终端命令为 `grok`。目录名保留 `Grok-CLI` 以兼容现有路径。
 
 - [01 安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md)
 - [02 权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md)
 - [03 Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md)
+
+## Part 10C：配置、凭证与多实例
+
+> 先理解客户端、模型、Provider、凭证、Profile 和实例，再使用 CC Switch、ccswitch 或 Cockpit Tools。
+
+- [01 先分清配置、凭证、供应商与实例](Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md)
+- [02 Codex 的 TOML、Profile 与凭证](Part-10C-配置凭证与多实例/02-Codex-TOML配置与凭证.md)
+- [03 Claude Code 的配置、凭证与网关](Part-10C-配置凭证与多实例/03-Claude-Code配置凭证与网关.md)
+- [04 CC Switch、ccswitch 与 Cockpit Tools](Part-10C-配置凭证与多实例/04-CC-Switch-ccswitch与Cockpit-Tools.md)
 
 ## Part 11：GPU 远程开发
 
@@ -108,7 +118,7 @@
 - [03 基础设施与远程开发 Prompt 模板](Part-12-AI开发工作流/03-基础设施Prompt模板.md)
 - [04 权限与安全边界总览](Part-12-AI开发工作流/04-权限与安全边界总览.md)
 - [05 复杂任务拆分与独立复核](Part-12-AI开发工作流/05-复杂任务拆分与独立复核.md)
-- [06 Claude Code、Codex CLI 与 Grok CLI 对照协作](Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md)
+- [06 Claude Code、Codex CLI 与 Grok Build 对照协作](Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md)
 - [07 Mac 到 Ubuntu GPU 的端到端案例](Part-12-AI开发工作流/07-Mac到Ubuntu-GPU端到端案例.md)
 
 ## 附录与维护
