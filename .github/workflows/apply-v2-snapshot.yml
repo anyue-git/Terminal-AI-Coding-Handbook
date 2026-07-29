@@ -1,0 +1,44 @@
+name: Apply V2 public snapshot
+
+on:
+  push:
+    branches:
+      - agent/v2-public-upgrade
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout public upgrade branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/v2-public-upgrade
+          fetch-depth: 0
+
+      - name: Download and apply reviewed V2 snapshot
+        env:
+          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-6ebc-81fd-8dfc-466bf42ce352/raw?se=2026-07-29T20:28:27Z&sp=r&sv=2026-02-06&sr=b&scid=d4e230c0-a469-516a-94b5-393df52ee89a&skoid=2d2fbb03-9efb-4ad0-a91c-1db2f5a47997&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T12:11:17Z&ske=2026-07-31T12:11:17Z&sks=b&skv=2026-02-06&sig=x22xZUe86yTg2Cq3pyO6u4DFurFGzgZXzNW6Po1xZDM%3D"
+        run: |
+          set -euo pipefail
+          tmp_dir="$(mktemp -d)"
+          curl --fail --location "$SNAPSHOT_URL" --output "$tmp_dir/artifact.zip"
+          unzip -q "$tmp_dir/artifact.zip" -d "$tmp_dir/artifact"
+          mkdir -p "$tmp_dir/tree"
+          tar -xzf "$tmp_dir/artifact/terminal-ai-coding-handbook-v2.tar.gz" -C "$tmp_dir/tree"
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          cp -a "$tmp_dir/tree/." .
+          test ! -e .github/workflows/apply-v2-snapshot.yml
+          test -f README.md
+          test -f RELEASE_NOTES_V2.0.md
+          test "$(find . -type f -name '*.md' | wc -l | tr -d ' ')" = "75"
+
+      - name: Commit V2 public upgrade
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "发布 Terminal & AI Coding Handbook V2.0"
+          git push origin HEAD:agent/v2-public-upgrade
