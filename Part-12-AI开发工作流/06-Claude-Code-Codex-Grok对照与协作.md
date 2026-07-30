@@ -1,65 +1,24 @@
 # 06 Claude Code、Codex CLI 与 Grok Build 对照协作
 
-> 最近核对：2026-07-30
->
-> 三个工具迭代都很快。本章只比较稳定的工作方式；安装、参数、认证和权限细节以各自专章、本机 `--help` 与官方文档为准。
+> 最近核对：2026-07-30  
+> 三个工具变化很快。本章只比较相对稳定的工作方式；安装、认证、参数和权限细节以各自专章、本机 `--help` 与官方文档为准。
 
-Claude Code、Codex CLI 和 Grok Build 都能读取项目、修改文件、运行命令和查看 Git 差异。真正影响选择的，不是抽象的“谁最聪明”，而是：
+Claude Code、Codex CLI 和 Grok Build 都能读取项目、修改文件、运行命令和查看 Git 差异。选择主力工具时，模型能力只是一个变量；任务需要多长的交互、是否要进入脚本或 CI、项目已经维护哪套规则文件、是否需要结构化输出、独立 Review、Worktree 或特定扩展，往往更能决定实际体验。
 
-```text
-任务是否需要长时间交互
-是否要非交互自动化
-项目规则放在哪里
-权限与 Sandbox 怎样限制
-会话能否恢复或分叉
-是否需要 Worktree
-输出是否适合脚本处理
-由谁独立复核
-```
-
-## 1. 不要让三个工具同时编辑同一个目录
-
-最危险的协作方式：
-
-```text
-Claude Code
-Codex CLI
-Grok Build
-→ 同时修改同一个未提交工作区
-```
-
-这会导致：
-
-- 文件互相覆盖；
-- 测试结果对应不上具体版本；
-- Agent 读取到对方的中间状态；
-- 很难判断某行是谁改的；
-- 一个工具回滚时破坏另一个工具的修改。
-
-更稳定的原则：
-
-```text
-一个工作区
-→ 同一时刻只有一个实施者
-
-其他工具
-→ 只读调查、独立复核或在独立 Worktree 工作
-```
-
-## 2. 三个工具的稳定定位
+## 1. 用稳定差异判断工具是否匹配任务
 
 | 维度 | Claude Code | Codex CLI | Grok Build |
 |---|---|---|---|
 | 交互入口 | `claude` | `codex` | `grok` |
 | 非交互 | 打印模式等 | `codex exec` | Headless / single prompt |
-| 项目规则 | `CLAUDE.md`、Settings 等 | `AGENTS.md`、Codex 配置 | 项目规则、Memory、配置等 |
-| 权限思路 | Permission Mode、Allow/Deny、Sandbox | 审批策略与 Sandbox 分开；另有 Permission Profiles | Ask、Auto、Always-approve 与 Sandbox 分开 |
-| 会话 | 继续、恢复、分叉等 | 恢复、分叉等 | 列表、恢复、继续、分叉等 |
-| 扩展 | Hooks、MCP、子 Agent | MCP、Skills、Hooks、Subagents | Skills、Plugins、Agents、Hooks、MCP、LSP、ACP |
-| Worktree | 可配合 Git Worktree | 可配合 Worktree 工作流 | 提供较直接的 Worktree 会话支持 |
-| 结构化自动化 | 依当前打印输出能力 | JSONL、Schema、最后消息文件 | JSON、streaming JSON 等 |
+| 项目规则 | `CLAUDE.md`、Settings | `AGENTS.md`、Codex 配置 | 项目规则、Memory、用户与项目配置 |
+| 权限结构 | Permission Mode、Allow/Deny、Sandbox | 审批策略与 Sandbox 分开；另有 beta Permission Profiles | Ask、Auto、Always-approve 与 Sandbox 分开 |
+| 会话能力 | 继续、恢复、分叉、命名会话 | 恢复、分叉、Review | 列表、恢复、继续、分叉 |
+| 扩展能力 | Hooks、MCP、子 Agent | MCP、Skills、Hooks、Subagents | Skills、Plugins、Agents、Hooks、MCP、LSP、ACP |
+| Worktree | Claude Worktree 或原生 Git Worktree | 通常配合原生 Git Worktree | 提供较直接的 Worktree 会话入口 |
+| 结构化输出 | 依当前打印输出能力 | JSONL、Schema、最后消息文件 | JSON、streaming JSON |
 
-表格只帮助判断方向，不能替代版本核对：
+表格给的是选择方向，不是永久功能清单。实际使用前查看当前版本：
 
 ```bash
 claude --version
@@ -72,326 +31,41 @@ grok version
 grok --help
 ```
 
-## 3. Claude Code 适合什么任务
+Claude Code 适合持续阅读较大代码库、多阶段交互，或项目已经认真维护 `CLAUDE.md`、Hooks、MCP 和子 Agent；Codex CLI 适合把交互开发、`codex exec` 自动化和 `codex review` 接入同一流程；Grok Build 适合需要 Ask/Auto、独立 Plan、Headless、streaming JSON、Grok Worktree 或更广扩展类型的场景。具体能力与权限由各产品专章解释，这里不再复制参数清单。
 
-常见适用场景：
+## 2. 任务决定主实施者，不要求三套工具同时出现
 
-- 持续阅读较大代码库；
-- 多阶段交互任务；
-- 项目已经维护 `CLAUDE.md`；
-- 需要 Hooks、MCP 或子 Agent；
-- 希望先 Plan，再分批实施；
-- 需要在一个会话中持续追踪上下文。
+小型修改通常只需要一套熟悉的客户端、人工 diff 和一次独立阅读。中型任务若依赖较长的代码探索与多轮澄清，Claude Code 往往更顺手；需要脚本化、JSONL、Schema 或独立 Review 时，Codex CLI 更合适；任务明确依赖 Grok Headless、Worktree 或扩展系统时，再选择 Grok Build。
 
-启动：
+项目已有成熟的 `CLAUDE.md`、`AGENTS.md` 或 `.grok` 配置时，沿用现有规则体系通常比为了模型偏好临时切换工具更省力。反过来，项目规则文件内容陈旧、权限过宽或加载来源不明时，工具“原生支持”也不应成为继续使用的理由。
 
-```bash
-claude
-```
+后端模型、认证和工具客户端也要分开看。同一个客户端可以接入不同 Provider，同一个模型也可能通过不同 Gateway 使用；比较结果需要记录客户端版本、实际后端、权限、项目状态和测试条件，不能只写“Claude/Codex/Grok 谁更好”。
 
-只读非交互分析可使用当前版本支持的打印模式，例如：
+## 3. 协作时保持一个写入者，其余会话提供不同阅读路径
 
-```bash
-claude -p "只读分析测试入口，不要修改文件"
-```
+最常用的组合是一个实施者和一个只读复核者。实施者在确定的分支或 Worktree 中修改并运行测试，复核者读取原始需求、当前 diff 和真实测试结果，从另一条路径寻找范围外修改、兼容问题和测试缺口。复核不要求使用同一客户端；使用另一工具的价值在于减少实现者的路径依赖，而不是自动获得更高正确率。
 
-风险重点：
-
-- 额外目录会扩大读取范围；
-- Hooks 能执行本地命令；
-- MCP 会连接外部服务；
-- 高权限模式会减少人工刹车；
-- 长会话可能保留旧假设。
-
-## 4. Codex CLI 适合什么任务
-
-常见适用场景：
-
-- 需要清楚区分审批与 Sandbox；
-- 交互开发与 `codex exec` 自动化结合；
-- 希望输出 JSONL 或受 Schema 约束的结果；
-- 做只读审查、CI 检查或批处理；
-- 项目使用 `AGENTS.md`；
-- 需要 `codex review`、恢复或分叉。
-
-启动：
-
-```bash
-codex
-```
-
-只读自动化示例：
-
-```bash
-codex exec --ephemeral \
-  "只读审查当前 Git diff，不要修改文件"
-```
-
-风险重点：
-
-- 不要混用稳定 Sandbox 配置与 beta Permission Profiles；
-- `danger-full-access` 与低审批不能作为日常默认；
-- 自动化必须设置外部超时和输出契约；
-- `--add-dir` 会扩大访问范围；
-- ChatGPT 登录与 Platform API Key 的计费路径不同。
-
-## 5. Grok Build 适合什么任务
-
-常见适用场景：
-
-- 需要明确切换 Ask、Auto 和 Always-approve；
-- 使用独立 Plan；
-- 频繁使用 Worktree 并行试验；
-- 需要 Headless、JSON 或 streaming JSON；
-- 使用 Skills、Plugins、Agents、Hooks、MCP 或 LSP；
-- 需要会话列表、恢复、继续和分叉。
-
-启动：
-
-```bash
-grok
-```
-
-风险重点：
-
-- Always-approve 只减少询问，不自动缩小访问范围；
-- 项目配置不能覆盖所有用户设置；
-- Worktree 不是完整安全沙箱；
-- 插件、Hook 和 MCP 会扩大能力链；
-- 浏览器 OAuth、设备码和 API Key 有明确认证优先级。
-
-## 6. 怎样选择主实施者
-
-### 任务需要长会话和连续理解
-
-选择自己最熟悉、项目规则最完整的交互工具。常见情况下可以让 Claude Code 主实施，但这不是固定结论；项目规则、模型可用性和团队习惯更重要。
-
-### 任务需要受控自动化和结构化输出
-
-Codex `exec` 更适合需要 JSONL、Schema、外层超时和脚本验收的流程。
-
-### 任务需要多个隔离试验
-
-Grok Worktree 工作流较直接；其他工具也能配合普通 Git Worktree。
-
-### 任务主要是只读审查
-
-三个工具都可以。优先选择：
-
-- 与实施者不同的新会话；
-- 只读权限；
-- 能获取原始需求、diff 和测试证据；
-- 不继承实施者总结。
-
-## 7. 最实用的双 Agent 分工
-
-实施者 Prompt：
+三个 Agent 也不意味着三者同时写代码。一种清楚的职责关系是：
 
 ```text
-你负责实施，不负责提交。
-
-先检查项目规则、Git 状态和相关测试。
-只允许修改：
-- FILE_A
-- FILE_B
-
-禁止：
-- 修改其他文件；
-- 安装依赖；
-- 访问外部服务；
-- 删除数据；
-- git add、commit 或 push。
-
-完成后运行 TEST_COMMAND，并汇报：
-- 修改文件；
-- 命令和退出状态；
-- 测试结果；
-- 未验证部分；
-- 风险。
+只读调查：找到入口、测试和风险
+单一实施者：在任务分支或独立 Worktree 中修改
+只读复核：检查 diff、测试和未验证内容
+人：确认需求、处理分歧并决定提交
 ```
 
-复核者 Prompt：
+同一未提交工作区同时只有一个写入者。其他会话保持只读，或使用独立 Worktree；否则测试结果无法对应到确定版本，Agent 也会把彼此的半成品当作项目现实。Worktree 的建立、外部资源共享和整合规则见[复杂任务拆分与独立复核](05-复杂任务拆分与独立复核.md)，本章不再重复完整命令。
 
-```text
-你没有参与实现，只负责只读审查。不要修改文件。
+复核意见也不能整批自动实施。先把发现分成已确认问题、需要进一步验证、可选改进和误报，再把确定问题交给实施者形成下一次小修改。两套 Agent 给出相反意见时，回到代码、测试、性能数据或产品规则，不通过再增加第三个模型“投票”解决。
 
-根据原始需求、当前 diff 和测试结果检查：
-1. 是否满足需求；
-2. 是否存在范围外修改；
-3. 逻辑、兼容性、错误处理和安全问题；
-4. 测试是否足够；
-5. 是否存在更小修复；
-6. 哪些内容无法验证。
+## 4. 使用最少但足够的组合，并分别管理每台机器
 
-分类为已确认问题、可能问题、无法验证和可选改进。
-```
+简单任务采用一套主力工具加人工 diff；需要第二意见时增加只读会话；需要对照两个实现时增加 Worktree；需要机器可读报告时使用 Codex `exec` 或 Grok Headless。只有职责确实不同、输入与输出边界明确时，第三个 Agent 才可能带来额外价值。
 
-## 8. 三 Agent 分工不等于三人同时写代码
+非交互任务仍需明确工作目录、外层超时、最大轮数、输出格式、退出状态和任务后的 Git diff。这些是自动化共同要求，不因选择某个产品而消失，完整方法见对应自动化章节。
 
-更合理的分工：
+Mac 与 Ubuntu 也是两套独立环境。SSH 或 rsync 可以同步源码，却不会自动同步 CLI 安装、登录缓存、TOML/Settings、MCP、Hook、Plugin、Skill、Shell 变量和系统凭据库。两台机器分别安装和配置，认证目录不整目录复制；比较两个工具时，也要避免把不同机器和不同后端的差异误归因于客户端本身。
 
-```text
-Agent A：调查
-→ 只读找入口、测试和风险
+工具越多，配置、权限、上下文和结果整合成本越高。清楚的需求、可查看的 diff、真实测试和独立复核，通常比同时启动三套客户端更有价值。
 
-Agent B：实施
-→ 在任务分支或 Worktree 修改
-
-Agent C：复核
-→ 只读检查 diff 与测试
-```
-
-人负责：
-
-- 确认需求；
-- 选择方案；
-- 批准高风险命令；
-- 分类复核意见；
-- 暂存、提交和推送。
-
-## 9. 使用 Worktree 做方案对照
-
-在主工作区执行：
-
-```bash
-git status --short
-git worktree add ../project-option-a -b experiment/option-a
-git worktree add ../project-option-b -b experiment/option-b
-```
-
-目录：
-
-```text
-project/
-→ 人工整合
-
-project-option-a/
-→ Agent A 实施最小方案
-
-project-option-b/
-→ Agent B 实施另一方案
-```
-
-每个 Worktree 开始前检查：
-
-```bash
-pwd
-git branch --show-current
-git status --short
-```
-
-比较时使用相同测试和输入，不要只比较两个 Agent 的文字总结。
-
-Worktree 仍共享主目录、凭据、网络、Docker、数据集和部分 Git 元数据。
-
-## 10. 不要让复核者自动修复所有发现
-
-复核输出先由人分类：
-
-```text
-必须修复
-需要确认
-可选改进
-误报
-```
-
-选定问题后，再交给实施者做一个新的小批次。不要直接说“把审查报告全部修好”。
-
-## 11. 非交互任务的共同要求
-
-无论 Claude、Codex 还是 Grok，脚本化时都应考虑：
-
-- 明确工作目录；
-- 使用临时或隔离会话；
-- 限制最大轮数；
-- 设置外层超时；
-- 固定输出格式；
-- 保留退出状态；
-- 记录执行命令；
-- 过滤凭据；
-- 防止重试重复写入；
-- 任务后检查 Git diff。
-
-自动化成功不能只看模型输出文字，还要看：
-
-```text
-进程退出状态
-输出文件
-测试结果
-Git diff
-未验证部分
-```
-
-## 12. Mac 与 Ubuntu 上不要自动共享 Agent 状态
-
-Mac 和 Ubuntu 是两台独立机器。下面内容不会因为 SSH 或 rsync 自动同步：
-
-- CLI 安装；
-- 登录缓存；
-- TOML 或 settings；
-- CC Switch/Cockpit Tools 状态；
-- MCP、Hook、Plugin 和 Skill；
-- Shell 环境变量；
-- 凭据库。
-
-源码可以同步，认证目录和 Agent 状态不应整目录复制。两台机器分别配置并核对真实 Provider、Base URL 和认证来源。
-
-## 13. 推荐的日常组合
-
-### 简单任务
-
-```text
-主力 Agent 实施
-→ 人工检查 diff
-→ 同一工具新会话只读复核
-```
-
-### 中型任务
-
-```text
-Claude Code 或熟悉工具调查与实施
-→ Codex/Grok 新会话只读复核
-→ 人工整合
-```
-
-### 自动化审查
-
-```text
-Codex exec 或 Grok Headless
-→ 结构化只读报告
-→ 人工决定是否进入修改任务
-```
-
-### 两种方案比较
-
-```text
-两个 Worktree
-→ 两个独立实施者
-→ 相同测试和基准
-→ 第三个只读复核
-→ 人工选择
-```
-
-工具组合不是越多越好。每增加一个 Agent，都增加一份配置、权限、上下文和结果整合成本。
-
-## 14. 最终判断标准
-
-不论使用哪个工具，可靠结果都应包含：
-
-- 明确需求；
-- 真实项目证据；
-- 限定修改范围；
-- 可查看 Git diff；
-- 测试命令和退出状态；
-- 未验证部分；
-- 独立复核；
-- 人工提交决定。
-
-工具负责提高调查和修改速度，闭环负责让结果可相信。
-
-## 延伸阅读
-
-- [Claude Code](../Part-09-Claude-Code/01-安装登录与启动.md)
-- [Codex CLI](../Part-10-Codex-CLI/01-安装登录与启动.md)
-- [Grok Build](../Part-10B-Grok-CLI/01-安装登录与基础使用.md)
-- [配置、凭证与多实例](../Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md)
+延伸阅读：[Claude Code](../Part-09-Claude-Code/01-安装登录与启动.md)、[Codex CLI](../Part-10-Codex-CLI/01-安装登录与启动.md)、[Grok Build](../Part-10B-Grok-CLI/01-安装登录与基础使用.md)、[复杂任务拆分与独立复核](05-复杂任务拆分与独立复核.md)和[配置、凭证与多实例](../Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md)。

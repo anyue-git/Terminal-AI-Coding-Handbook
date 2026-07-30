@@ -2,15 +2,11 @@
 
 > 最近核对：2026-07-29
 
-这一章主要讲本地 Codex CLI 和 Codex IDE 扩展读取的配置。它们共享 Codex 的配置层和登录缓存，因此在 CLI 中修改 `~/.codex/config.toml`，通常也会影响 IDE 扩展。Codex 的其他界面或托管运行环境可能还有独立设置，遇到界面行为不一致时，应先确认当前操作的是本地 CLI、IDE 扩展还是云端任务。
+本章讨论本地 Codex CLI 与 Codex IDE 扩展共享的配置层和登录缓存。云端任务或其他 Codex 界面可能有独立设置，行为不一致时应先确认当前操作的是 CLI、IDE 扩展还是托管环境。学习 TOML 的目的不是背完整参考，而是能够沿着 `CODEX_HOME`、配置优先级、Provider、凭证存储和进程启动参数，解释当前请求为什么走向某个模型或账号。
 
-学习 TOML 的目的不是背完整配置参考，而是能看懂管理工具写入了什么，知道哪些字段决定模型和供应商，也知道凭证为什么不应该直接粘贴进公开配置。
+## 1. `CODEX_HOME` 定义状态边界，TOML 描述行为
 
----
-
-## 1. Codex 默认读取哪些位置
-
-Codex 的本地状态目录由 `CODEX_HOME` 决定，默认是：
+Codex 状态目录由 `CODEX_HOME` 决定，默认是：
 
 ```text
 ~/.codex
@@ -19,29 +15,24 @@ Codex 的本地状态目录由 `CODEX_HOME` 决定，默认是：
 常见内容包括：
 
 ```text
-~/.codex/config.toml
-~/.codex/auth.json
-~/.codex/history.jsonl
+config.toml    行为与 Provider 配置
+auth.json      文件式凭证缓存（只有采用该方式时才存在）
+history.jsonl  本地历史
 ```
 
-`config.toml` 保存行为设置，`auth.json` 只在使用文件式凭证存储时出现；系统也可能把凭证放入 Keychain 或 Keyring。历史、日志和缓存同样可能位于 `CODEX_HOME` 下，所以不应把整个目录当作普通配置压缩后发给别人。
-
-先检查当前目录和文件权限：
+系统也可能把凭证放进 Keychain 或 Keyring。日志、缓存和历史同样可能位于状态目录，因此整个 `~/.codex` 不能作为普通配置包发送给别人。只检查目录与权限：
 
 ```bash
 printf 'CODEX_HOME=%s\n' "${CODEX_HOME:-$HOME/.codex}"
 ls -ld "${CODEX_HOME:-$HOME/.codex}" 2>/dev/null
-ls -l "${CODEX_HOME:-$HOME/.codex}/config.toml" \
+ls -l \
+  "${CODEX_HOME:-$HOME/.codex}/config.toml" \
   "${CODEX_HOME:-$HOME/.codex}/auth.json" 2>/dev/null
 ```
 
-这组命令不会读取文件正文。若 `auth.json` 不存在，可能是尚未登录，也可能是凭证存放在系统凭证库中。
+`auth.json` 不存在既可能表示尚未登录，也可能表示凭证存放在系统库中。
 
----
-
-## 2. 只学够用的 TOML 语法
-
-TOML 最常见的形式是“键等于值”：
+日常阅读 TOML 只需先掌握键值和配置表：
 
 ```toml
 model = "gpt-5.6"
@@ -49,9 +40,7 @@ approval_policy = "on-request"
 sandbox_mode = "workspace-write"
 ```
 
-左边是配置键，右边是值。字符串使用引号，布尔值写 `true` 或 `false`，数字不加引号。
-
-方括号表示一个配置表：
+字符串有引号，布尔值写 `true`/`false`，数字不加引号。方括号建立配置表：
 
 ```toml
 [model_providers.company_proxy]
@@ -61,22 +50,9 @@ env_key = "COMPANY_OPENAI_API_KEY"
 wire_api = "responses"
 ```
 
-这里的 `company_proxy` 是自定义标识。`env_key` 的值不是 API Key，而是环境变量名称。真正的密钥应由 Shell、密码管理器或凭证辅助程序提供。
+`company_proxy` 是自定义标识，`env_key` 是环境变量名称，不是密钥正文。真正凭证由 Shell、Keyring、密码管理器或可信辅助程序提供。
 
-TOML 对引号、数组和层级有明确语法。修改后如果 Codex 无法启动，不要继续叠加配置，先检查文件：
-
-```bash
-codex --version
-codex --help
-```
-
-如果报错指出某一行 TOML 解析失败，优先检查缺少引号、重复键、表名拼错和复制时混入的全角符号。
-
----
-
-## 3. 最小用户配置
-
-一个适合新手理解的基础配置如下：
+一个便于理解的最小用户配置：
 
 ```toml
 model = "gpt-5.6"
@@ -85,67 +61,32 @@ sandbox_mode = "workspace-write"
 cli_auth_credentials_store = "keyring"
 ```
 
-它分别控制默认模型、命令审批、文件系统 Sandbox 和凭证存储方式。模型名称和可用设置会随版本变化，不应把示例中的模型永久视为唯一正确选择。
-
-修改前先备份：
+模型名和字段会变化，示例不代表永久唯一值。修改前建立备份：
 
 ```bash
 mkdir -p ~/.config-backups/codex
 chmod 700 ~/.config-backups ~/.config-backups/codex
 cp ~/.codex/config.toml \
   ~/.config-backups/codex/config.toml.before-edit 2>/dev/null || true
-```
 
-再使用自己熟悉的编辑器打开：
-
-```bash
 nano ~/.codex/config.toml
 ```
 
-保存后启动一个只读任务，确认配置能够加载：
+保存后用低风险只读会话验证解析：
 
 ```bash
 codex "只读说明当前目录，不要修改文件"
 ```
 
-如果客户端仍使用旧模型，检查是否有命令行参数、项目配置或 Profile 覆盖用户配置。
+启动失败时检查引号、重复键、表名和全角字符；继续叠加配置只会让错误来源更难判断。
 
----
+## 2. 配置优先级与 Profile 决定当前场景，不自动切换账号
 
-## 4. 配置优先级为什么重要
+Codex 按层合并配置，当前大致从高到低为：命令行参数与 `--config`、受信任项目的 `.codex/config.toml`、`--profile` 选择的 Profile、用户 `~/.codex/config.toml`、系统配置、内置默认值。用户文件写了 `MODEL_A`，受信任项目写了 `MODEL_B`，在该项目中通常使用 `MODEL_B`，离开项目又回到用户默认。
 
-Codex 按层合并配置，优先级从高到低大致为：
+项目配置适合团队共享审批、Sandbox 和非敏感模型规则，不应提交真实 Key。Codex 只为受信任项目加载项目配置，以降低陌生仓库自动应用危险设置的风险。遇到旧模型或设置时，应检查启动参数、当前项目 `.codex/` 与 Profile，而不是直接删除登录缓存。
 
-1. 命令行参数和 `--config`；
-2. 受信任项目中的 `.codex/config.toml`；
-3. 通过 `--profile` 选择的 Profile 文件；
-4. 用户配置 `~/.codex/config.toml`；
-5. 系统配置；
-6. 内置默认值。
-
-这意味着你修改了用户配置，却仍可能被项目文件或启动参数覆盖。遇到“文件已经改了但没有生效”时，先查看启动命令和项目中的 `.codex/`，不要立刻删除 `auth.json`。
-
-例如用户配置写了：
-
-```toml
-model = "MODEL_A"
-```
-
-项目中的 `.codex/config.toml` 写了：
-
-```toml
-model = "MODEL_B"
-```
-
-在受信任项目中启动时，实际使用的通常是 `MODEL_B`。离开该项目后，又会回到用户默认值。
-
-项目配置适合保存团队共享的审批和 Sandbox 规则，但不应提交真实密钥。Codex 只会为受信任项目加载项目级配置，这是为了降低克隆陌生仓库后自动应用危险设置的风险。
-
----
-
-## 5. Profile 不是账号
-
-Profile 是一层命名配置，用于保存不同场景下的模型、审批策略或供应商设置。例如建立一个较谨慎的代码审查 Profile：
+Profile 用于保存命名场景，例如更高推理强度的审查：
 
 ```toml
 # ~/.codex/deep-review.config.toml
@@ -154,15 +95,11 @@ model_reasoning_effort = "xhigh"
 approval_policy = "on-request"
 ```
 
-启动时执行：
-
 ```bash
 codex --profile deep-review
 ```
 
-当前 Codex 使用独立的 `~/.codex/PROFILE_NAME.config.toml` 文件。旧教程中将内容写在 `[profiles.NAME]` 下的方式已经不适用于 Codex 0.134.0 及以后版本。
-
-Profile 默认叠加在同一个 `CODEX_HOME` 上，因此通常仍共享登录缓存。换句话说：
+当前 Codex 使用独立的 `~/.codex/PROFILE_NAME.config.toml`；旧教程把内容放在 `[profiles.NAME]` 中的写法已不适用于 Codex 0.134.0 及以后版本。Profile 默认叠加在同一 `CODEX_HOME` 上，通常共享官方登录、`auth.json`、Keyring 和历史：
 
 ```text
 切换 Profile
@@ -170,13 +107,11 @@ Profile 默认叠加在同一个 `CODEX_HOME` 上，因此通常仍共享登录�
 ≠ 建立独立实例
 ```
 
-如果 Profile 只改变模型或供应商，它不会自动创建另一份 `auth.json`。
+因此 Profile 适合切换模型、Provider、审批和 Sandbox 场景，不应被当成账号容器。
 
----
+## 3. Provider、协议和凭证存储必须同时匹配
 
-## 6. 自定义供应商与中转站
-
-Codex 支持在 `model_providers` 中定义额外供应商。下面是结构示例，地址和模型名必须替换为服务方实际提供的值：
+自定义 Provider 的基本结构：
 
 ```toml
 model = "PROVIDER_MODEL_NAME"
@@ -189,17 +124,17 @@ env_key = "MY_GATEWAY_API_KEY"
 wire_api = "responses"
 ```
 
-在当前 Shell 中临时设置密钥：
+临时提供 Key：
 
 ```bash
-read -s MY_GATEWAY_API_KEY
+IFS= read -r -s MY_GATEWAY_API_KEY
 export MY_GATEWAY_API_KEY
 printf '\n密钥已写入当前 Shell 环境，不会显示正文。\n'
 ```
 
-`read -s` 不回显输入，但变量仍存在于当前 Shell 进程中。关闭终端后通常会消失。长期使用时，应采用系统凭证库、可信密码管理器或服务方支持的凭证辅助程序，不要直接把密钥写入仓库中的 `.env`。
+`read -s` 只是不回显，变量仍存在于当前进程。长期使用应采用 Keyring、可信密码管理器或供应商支持的辅助程序，不把 Key 写入项目 `.env` 或 TOML。
 
-Codex 官方还支持由外部命令获取 Bearer Token：
+企业短期 Token 可以由外部命令获取：
 
 ```toml
 [model_providers.company_gateway]
@@ -214,59 +149,27 @@ timeout_ms = 5000
 refresh_interval_ms = 300000
 ```
 
-这种方式适合企业短期令牌。辅助命令会接触凭证，应由可信管理员提供并限制文件权限。
+辅助命令会接触凭证，应由可信管理员提供并限制权限。
 
----
+Base URL 能建立连接不代表兼容 Codex。当前 Codex 主要围绕 Responses 协议，`wire_api = "responses"` 表示按该协议通信。401/403 更接近 Key、权限范围和 Header；404 更接近 Base URL 路径；`model not found` 要检查名称与账号权限；普通对话成功但工具调用失败，通常说明上游没有完整支持 Responses 流式事件和 Tool Call；只支持 `/chat/completions` 的服务通常需要网关转换。“OpenAI compatible”不能直接等同于 Codex Agent 兼容。
 
-## 7. `wire_api` 与协议兼容
-
-Base URL 能连通，不代表服务就兼容 Codex。Codex 当前主要围绕 Responses 协议工作，自定义 Provider 中的 `wire_api = "responses"` 表示按 Responses 形式通信。
-
-常见故障可以按下面的顺序判断：
-
-- **401 或 403**：先检查密钥、授权范围和请求头；
-- **404**：检查 Base URL 是否已经包含 `/v1`、服务端是否提供对应路径；
-- **model not found**：检查模型名称和账号权限；
-- **能对话但工具调用失败**：检查服务是否完整兼容 Responses、流式事件和工具调用；
-- **返回 Chat Completions 格式错误**：上游可能只支持 `/chat/completions`，需要兼容网关做协议转换。
-
-不要因为服务宣传“OpenAI compatible”就默认它支持 Codex 所需的全部事件。兼容普通聊天接口与兼容 Codex Agent 工作流是不同要求。
-
----
-
-## 8. `auth.json` 与 Keyring
-
-Codex 可以把缓存凭证保存到 `auth.json`，也可以使用操作系统凭证库。配置键如下：
+凭据存储由以下字段控制：
 
 ```toml
 cli_auth_credentials_store = "keyring"
 ```
 
-可选值包括：
-
-- `file`：保存到 `CODEX_HOME/auth.json`；
-- `keyring`：保存到系统凭证库；
-- `auto`：能使用系统凭证库时优先使用，否则退回文件。
-
-如果使用文件方式，`auth.json` 可能包含访问令牌，应当像密码一样处理。不要执行：
-
-```bash
-cat ~/.codex/auth.json
-```
-
-然后把输出贴到聊天、Issue 或群组中。需要确认文件是否存在，只运行：
+当前可选值包括 `file`（保存到 `CODEX_HOME/auth.json`）、`keyring`（系统凭证库）和 `auto`（优先系统库，必要时退回文件）。文件式 `auth.json` 可能包含访问令牌，只确认路径和权限：
 
 ```bash
 ls -l ~/.codex/auth.json
 ```
 
-退出登录会影响 CLI 和 IDE 扩展共享的缓存。删除文件不是日常排错的第一步，因为你可能同时失去仍然有效的官方登录。
+CLI 与 IDE 扩展共享缓存时，logout、删除文件或切换凭证可能同时影响两端。删除缓存不是常规排错第一步，也不能把认证文件正文粘贴到聊天、Issue 或群组。
 
----
+## 4. 真正的第二实例需要独立状态目录，并验证剩余共享层
 
-## 9. 用 `CODEX_HOME` 建立第二套实例
-
-Profile 适合切换配置，不适合完整隔离账号。要建立第二套状态目录，可以临时指定：
+创建第二套本地状态：
 
 ```bash
 mkdir -p ~/.codex-work
@@ -274,9 +177,7 @@ chmod 700 ~/.codex-work
 CODEX_HOME="$HOME/.codex-work" codex
 ```
 
-第一次启动时，这套实例会在新的 `CODEX_HOME` 中创建自己的配置、登录缓存和历史。原来的 `~/.codex` 不会自动复制过去。
-
-可以准备两个启动脚本，但不要把密钥写进脚本：
+新目录会建立自己的配置、登录缓存和历史，不自动复制 `~/.codex`。可以准备不含密钥的启动脚本：
 
 ```bash
 #!/bin/sh
@@ -288,13 +189,9 @@ CODEX_HOME="$HOME/.codex-personal" exec codex "$@"
 CODEX_HOME="$HOME/.codex-work" exec codex "$@"
 ```
 
-为脚本增加执行权限后，就能从两个终端分别启动。此方式仍需确认 Codex 版本是否把所有相关状态都放在 `CODEX_HOME`，以及系统 Keyring 中的条目是否会跨目录共享。真正需要强隔离时，独立系统用户或容器边界更清楚。
+这种隔离仍需验证当前版本是否把全部状态放在 `CODEX_HOME`，以及系统 Keyring 条目是否跨目录共享。需要更强边界时，独立系统用户或容器更清楚。
 
----
-
-## 10. 管理工具切换 Codex 时应检查什么
-
-使用 CC Switch 或 Cockpit Tools 切换后，至少检查：
+管理工具切换后至少检查：
 
 ```bash
 printf 'CODEX_HOME=%s\n' "${CODEX_HOME:-$HOME/.codex}"
@@ -302,11 +199,9 @@ grep -E '^(model|model_provider|openai_base_url|cli_auth_credentials_store)' \
   "${CODEX_HOME:-$HOME/.codex}/config.toml" 2>/dev/null
 ```
 
-这只查看少数非密钥字段。不要把整个配置文件发送给别人，因为自定义 Header 或实验字段中仍可能含有秘密。
+这里仅读取非密钥字段，完整配置仍可能包含自定义 Header 或实验秘密。Base URL 指向 localhost 时，还要检查本地路由进程、端口和上游账号。恢复官方配置时优先使用管理工具的退出接管或恢复功能，不要一边手工覆盖文件，一边让工具继续监控并写回。
 
-如果工具启用了本地路由，Base URL 可能指向 `127.0.0.1`。此时还要检查本地服务是否运行、监听哪个端口，以及它选择了哪个上游账号。恢复官方配置前，先使用工具提供的退出接管或恢复功能，不要同时手工覆盖文件和点击切换按钮。
-
-### 核对来源
+核对来源：
 
 - [Codex Config basics](https://learn.chatgpt.com/docs/config-file/config-basic)
 - [Codex Advanced configuration](https://learn.chatgpt.com/docs/config-file/config-advanced)
