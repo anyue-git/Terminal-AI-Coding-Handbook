@@ -1,43 +1,23 @@
 # 03 Docker Compose 多服务项目
 
-当一个项目同时包含 Web、数据库、缓存、后台任务或模型服务时，继续维护多条独立 `docker run` 命令会很快失去控制。Docker Compose 用一份 YAML 描述服务、网络、卷、端口、环境变量和启动关系，再通过统一命令创建和管理这一组资源。
+当项目同时包含 Web、数据库、缓存、后台任务或模型服务时，多条独立 `docker run` 命令很快会失去共同边界。Docker Compose 用一份 YAML 描述服务、网络、卷、端口、环境变量和启动关系，再通过统一命令管理这一组资源。本章建立一个 Nginx、PostgreSQL、一次性检查任务和可选 Adminer 组成的练习项目，重点理解最终配置、服务生命周期、内部 DNS、Healthcheck、存储和安全停止。
 
-本章建立一个可运行的练习项目：Nginx 提供本地 Web 页面，PostgreSQL 保存数据，另一个一次性服务等待数据库健康后执行查询。这个例子用来理解 Compose 的项目边界、服务名 DNS、Healthcheck、Named Volume、Profiles 和安全停止方式。
+## 1. 建立项目，并在启动前解析最终配置
 
-## 1. 先确认当前使用的是 Compose V2
-
-运行：
+确认当前 Compose 实现：
 
 ```bash
 docker compose version
 ```
 
-当前常用命令形式是：
+当前常用形式是 `docker compose`，新文件通常直接从 `services:` 开始，不需要为兼容旧教程添加顶层 `version:`。已有项目应遵循其现有文件和工具版本。
 
-```bash
-docker compose
-```
-
-而不是旧的独立可执行文件：
-
-```text
-docker-compose
-```
-
-新 Compose 文件通常直接从 `services:` 开始，不需要为了兼容旧教程添加顶层 `version:`。如果项目已经有现成 Compose 文件，应先遵循项目约定，不要为了形式统一随意重写。
-
-## 2. 建立练习项目
-
-创建目录：
+创建网页和 `compose.yaml`：
 
 ```bash
 mkdir -p ~/terminal-practice/compose-demo/site
 cd ~/terminal-practice/compose-demo
-```
 
-创建一个网页：
-
-```bash
 cat > site/index.html <<'EOF'
 <!doctype html>
 <html lang="zh-CN">
@@ -47,14 +27,12 @@ cat > site/index.html <<'EOF'
 EOF
 ```
 
-创建 `compose.yaml`：
-
 ```yaml
 services:
   web:
     image: nginx:alpine
     ports:
-      - "127.0.0.1:18080:80"
+      - "127.0.0.1:${WEB_PORT:-18080}:80"
     volumes:
       - ./site:/usr/share/nginx/html:ro
 
@@ -79,12 +57,9 @@ services:
         condition: service_healthy
     environment:
       PGPASSWORD: demo-local-password
-    command:
-      - sh
-      - -c
-      - >-
-        psql -h db -U demo -d demo
-        -c "select current_database(), current_user;"
+    command: >-
+      psql -h db -U demo -d demo
+      -c "select current_database(), current_user;"
 
   adminer:
     image: adminer:latest
@@ -99,341 +74,28 @@ volumes:
   db-data:
 ```
 
-这里的密码只用于本机练习，不应照搬到真实项目。正式项目应提交 `.env.example` 或变量说明，而不是把生产秘密写进 Compose 文件。
+这里的密码只用于本机练习，不能照搬到真实项目。正式仓库应提交变量说明或 `.env.example`，真实秘密由受控环境提供。
 
-## 3. 启动前先解析最终配置
-
-不要把 `docker compose up` 当作 YAML 检查器。先运行：
-
-```bash
-docker compose config
-```
-
-这会解析：
-
-- YAML 缩进和字段；
-- 环境变量替换；
-- 多文件合并；
-- Profiles；
-- Volume 与网络声明；
-- 服务的最终配置。
-
-只查看服务名：
-
-```bash
-docker compose config --services
-```
-
-输出应包含：
-
-```text
-web
-db
-db-check
-```
-
-`adminer` 带有 `debug` Profile，默认不会启动。
-
-还应确认当前目录和 Docker 目标：
+启动前解析配置，而不是把 `up` 当成 YAML 检查器：
 
 ```bash
 pwd
 docker context show
+docker compose config
+docker compose config --services
 docker compose config --volumes
 docker compose config --profiles
 ```
 
-Compose 会根据项目目录和项目名创建容器、网络和 Volume。在错误目录中执行相同命令，可能操作另一套同名服务。
+Compose 会结合当前目录、环境变量和多文件规则形成最终配置，并按项目名创建容器、网络和 Volume。在错误目录执行同一命令，可能操作另一套资源。
 
-## 4. 前台启动并观察生命周期
-
-运行：
-
-```bash
-docker compose up
-```
-
-你会看到多个服务的日志交错输出。预期过程是：
-
-```text
-db 启动
-→ Healthcheck 变为 healthy
-→ db-check 执行 SQL 并退出 0
-→ web 持续运行
-```
-
-另开终端检查：
-
-```bash
-cd ~/terminal-practice/compose-demo
-docker compose ps -a
-```
-
-`web` 和 `db` 应处于运行状态，`db-check` 可能显示已成功退出。一次性迁移、初始化和测试服务正常退出，并不等于整个 Compose 项目失败。
-
-访问网页：
-
-```bash
-curl http://127.0.0.1:18080
-```
-
-完成观察后，在前台终端按 `Ctrl + C`。这会停止由本次 `up` 附着的服务，但不会删除 Named Volume。
-
-## 5. 后台运行、查看日志和停止
-
-后台启动：
-
-```bash
-docker compose up -d
-```
-
-查看状态：
-
-```bash
-docker compose ps
-docker compose ps -a
-```
-
-查看全部日志：
-
-```bash
-docker compose logs --tail=100
-```
-
-持续观察某个服务：
-
-```bash
-docker compose logs -f web
-```
-
-停止并删除本项目容器和默认网络：
-
-```bash
-docker compose down
-```
-
-`down` 默认不会删除 Named Volume。不要把下面的附加删除操作当作普通停止方式：
-
-```text
-docker compose down -v
-```
-
-它会删除项目 Volume，其中可能包含数据库和用户数据。
-
-## 6. 服务名是容器网络中的稳定地址
-
-Compose 默认会为项目创建一个网络，服务会通过内部 DNS 使用服务名互相发现。在 `db-check` 中：
-
-```text
-psql -h db
-```
-
-这里的 `db` 是 Compose 服务名，不是固定 IP。
-
-查看网络：
-
-```bash
-docker network ls | grep compose-demo || true
-docker compose exec db hostname
-```
-
-容器重新创建后 IP 可能变化，但服务名保持稳定。因此服务间连接应该写：
-
-```text
-db:5432
-```
-
-而不是把某次检查得到的容器 IP 写进配置。
-
-容器内的 `localhost` 只指当前容器。`web` 容器中的 `localhost:5432` 不会自动连接到 `db` 容器。
-
-## 7. 容器端口与宿主机端口不是一回事
-
-Web 配置：
-
-```yaml
-ports:
-  - "127.0.0.1:18080:80"
-```
-
-含义是：
-
-```text
-宿主机 127.0.0.1:18080
-→ web 容器 80
-```
-
-从 Mac 或 Ubuntu 宿主机访问时使用 `127.0.0.1:18080`；Compose 服务之间通信时使用服务名和容器端口。
-
-查看实际映射：
-
-```bash
-docker compose port web 80
-```
-
-数据库没有声明 `ports`，因此只能从 Compose 网络内部访问。这个默认更适合开发安全边界：不需要宿主机直接连接的服务，不要为了“方便排错”暴露到所有网络接口。
-
-## 8. `depends_on` 与 Healthcheck 的区别
-
-简单写法：
-
-```yaml
-depends_on:
-  - db
-```
-
-只能表达启动顺序，不能证明数据库已经接受连接。
-
-本章使用：
-
-```yaml
-depends_on:
-  db:
-    condition: service_healthy
-```
-
-并为数据库定义 `healthcheck`。这样 `db-check` 会等待数据库健康。
-
-检查健康状态：
-
-```bash
-docker compose ps
-docker inspect "$(docker compose ps -q db)" \
-  --format '{{json .State.Health}}'
-```
-
-Healthcheck 不是业务完整性证明。应用仍应处理数据库重启、短暂断线和连接重建，不能只依赖第一次启动顺序。
-
-## 9. Bind Mount 与 Named Volume 分工
-
-练习项目使用两类存储：
-
-```text
-./site:/usr/share/nginx/html:ro
-→ Bind Mount
-→ 宿主机可直接编辑的网页源码
-
- db-data:/var/lib/postgresql/data
-→ Named Volume
-→ Docker 管理的数据库持久数据
-```
-
-`ro` 表示 Web 容器只读挂载网页目录，降低容器误改源码的机会。
-
-查看 Volume：
-
-```bash
-docker volume ls
-docker volume inspect compose-demo_db-data
-```
-
-实际名称可能因项目名而不同。使用：
-
-```bash
-docker compose config --volumes
-```
-
-先确认逻辑名，再通过 `docker volume ls` 找到实际资源。
-
-停止并重新启动项目后，数据库 Volume 仍存在。Compose 文件只描述 Volume，不等于已经备份数据。
-
-## 10. `run`、`exec` 和普通服务的区别
-
-在已经运行的数据库容器中执行命令：
-
-```bash
-docker compose exec db \
-  psql -U demo -d demo -c 'select now();'
-```
-
-`exec` 在现有容器中运行。
-
-创建一次性新容器：
-
-```bash
-docker compose run --rm db-check
-```
-
-`run` 根据服务定义创建新的临时容器。它与正在运行的服务不是同一个进程和可写层，端口行为也可能不同。
-
-常见用途：
-
-```text
-exec
-→ 进入已经运行的应用或数据库检查现场
-
-run --rm
-→ 测试、迁移、管理命令和一次性任务
-```
-
-不要在不清楚环境差异时，用一次性容器的成功代替真实服务验证。
-
-## 11. Profiles 管理可选服务
-
-启动默认服务：
-
-```bash
-docker compose up -d
-```
-
-不会启动 `adminer`。
-
-启用调试 Profile：
-
-```bash
-docker compose --profile debug up -d
-```
-
-然后访问：
-
-```text
-http://127.0.0.1:18081
-```
-
-Adminer 连接参数中，数据库主机应填写服务名：
-
-```text
-db
-```
-
-Profiles 适合可选调试 UI、观测工具和开发辅助服务。不要用 Profile 隐藏生产必需依赖，否则其他人可能在不知情的情况下启动一套不完整系统。
-
-使用完调试工具后：
-
-```bash
-docker compose --profile debug down
-```
-
-## 12. 环境变量和秘密的两种阶段
-
-Compose 有两个不同阶段会使用环境变量：
-
-```text
-Compose 插值阶段
-→ 生成最终 YAML
-
-容器运行阶段
-→ 注入服务环境变量
-```
-
-例如：
-
-```yaml
-ports:
-  - "127.0.0.1:${WEB_PORT:-18080}:80"
-```
-
-`${WEB_PORT:-18080}` 在 Compose 解析阶段展开。
-
-查看插值：
+`${WEB_PORT:-18080}` 在 Compose 解析阶段展开；它与容器进程收到的环境变量属于不同阶段。可以临时观察插值结果：
 
 ```bash
 WEB_PORT=19090 docker compose config
 ```
 
-注意 `docker compose config` 可能把环境变量值展开到输出中。不要把含真实密码、Token 或私有地址的完整结果直接发到公开聊天或 Issue。
-
-本地 `.env` 不是加密保险箱。可以提交 `.env.example`：
+`docker compose config` 可能把环境变量值展开到输出中，不能把含真实密码、Token 或私有地址的完整结果直接粘贴到公开聊天或 Issue。本地 `.env` 也不是加密保险箱；仓库可以提交类似下面的 `.env.example`：
 
 ```text
 WEB_PORT=18080
@@ -441,11 +103,129 @@ POSTGRES_USER=demo
 POSTGRES_PASSWORD=replace-me
 ```
 
-真实秘密应通过组织认可的 Secret 管理、CI Secret 或权限受限的本地配置提供。
+## 2. 前台观察启动顺序和服务状态
 
-## 13. 多份 Compose 文件必须先看合并结果
+```bash
+docker compose up
+```
 
-常见结构：
+日志会交错显示：数据库启动并通过 Healthcheck，`db-check` 执行查询后正常退出，Web 持续运行。另开终端查看：
+
+```bash
+cd ~/terminal-practice/compose-demo
+docker compose ps -a
+curl http://127.0.0.1:18080
+```
+
+一次性迁移或检查服务退出 0，不代表整个项目失败。前台终端按 `Ctrl + C` 会停止本次附着的服务，但不会删除 Named Volume。
+
+后台运行与查看日志：
+
+```bash
+docker compose up -d
+docker compose ps
+docker compose ps -a
+docker compose logs --tail=100
+docker compose logs -f web
+```
+
+停止并删除项目容器与默认网络：
+
+```bash
+docker compose down
+```
+
+`down` 默认保留 Named Volume。`docker compose down -v` 会删除项目卷，其中可能包含数据库和用户数据，不应作为普通停止命令。
+
+## 3. 服务名、容器端口和宿主端口属于不同层
+
+Compose 默认网络为服务提供内部 DNS。`db-check` 使用 `-h db`，其中 `db` 是服务名，不是固定 IP；容器重新创建后地址可以变化，服务名保持稳定。
+
+Web 端口配置：
+
+```yaml
+ports:
+  - "127.0.0.1:18080:80"
+```
+
+表示宿主机回环地址 18080 映射到 Web 容器 80。宿主访问 `127.0.0.1:18080`，服务之间使用 `db:5432` 等服务名和容器端口。容器内 `localhost` 只指当前容器，不会自动连接另一服务。
+
+```bash
+docker compose port web 80
+docker network ls | grep compose-demo || true
+docker compose exec db hostname
+```
+
+数据库未声明 `ports`，默认只供 Compose 网络内部访问。不需要宿主直接连接的服务，不应为了排错暴露到所有网络接口。
+
+服务间连接失败时，先确认两个服务是否属于同一 Compose 项目与网络，再在容器内部测试服务名和端口。需要查看具体网络时，可以先找到服务容器：
+
+```bash
+docker compose ps -q db
+docker inspect "$(docker compose ps -q db)" \
+  --format '{{json .NetworkSettings.Networks}}'
+```
+
+这比把某次看到的容器 IP 写死进配置更可靠。
+
+## 4. 启动顺序不等于服务已就绪
+
+简单 `depends_on` 只能表达创建顺序，不能证明数据库已接受连接。本例为数据库设置 Healthcheck，并让 `db-check` 等待 `service_healthy`。
+
+```bash
+docker compose ps
+docker inspect "$(docker compose ps -q db)" \
+  --format '{{json .State.Health}}'
+```
+
+Healthcheck 也不是业务完整性证明。应用仍需处理数据库重启、短暂断线和连接恢复，不能只依赖首次启动顺序。
+
+## 5. 源码用 Bind Mount，持久数据用 Named Volume
+
+```text
+./site:/usr/share/nginx/html:ro
+→ 宿主机直接编辑的网页源码
+
+db-data:/var/lib/postgresql/data
+→ Docker 管理的数据库数据
+```
+
+只读挂载降低 Web 容器误改源码的机会。查看卷：
+
+```bash
+docker compose config --volumes
+docker volume ls
+docker volume inspect compose-demo_db-data
+```
+
+实际名称可能受项目名影响。Compose 文件描述卷的存在和挂载方式，不等于已经备份数据。停止、重新创建容器后卷仍在；删除卷、磁盘损坏或数据库写坏仍会造成损失。
+
+## 6. `exec`、`run`、Profile、多文件与项目名解决不同边界
+
+在正在运行的数据库容器中执行命令：
+
+```bash
+docker compose exec db \
+  psql -U demo -d demo -c 'select now();'
+```
+
+根据服务定义创建一次性容器：
+
+```bash
+docker compose run --rm db-check
+```
+
+`exec` 使用现有容器现场，`run --rm` 创建临时容器，二者的进程、可写层和端口行为不同。一次性容器成功不能代替真实服务验证。
+
+默认启动不会包含带 `debug` Profile 的 Adminer：
+
+```bash
+docker compose --profile debug up -d
+```
+
+使用时数据库主机填写服务名 `db`。Profiles 适合调试 UI、观测工具和开发辅助服务，不应隐藏生产必需依赖。
+
+项目常把基础、开发或 GPU 配置拆成多份文件：
 
 ```text
 compose.yaml
@@ -453,116 +233,74 @@ compose.dev.yaml
 compose.gpu.yaml
 ```
 
-检查合并后的配置：
+后面的文件会按 Compose 合并规则覆盖或追加前面的映射与列表。启动前先查看最终结果，并在启动时保持相同的 `-f` 顺序：
 
 ```bash
 docker compose \
   -f compose.yaml \
   -f compose.dev.yaml \
   config
-```
 
-后面的文件会按照 Compose 合并规则追加或覆盖前面的内容。列表、映射和路径的行为并不总是符合直觉。
-
-启动时要使用同样的 `-f` 顺序：
-
-```bash
 docker compose \
   -f compose.yaml \
   -f compose.dev.yaml \
   up -d
 ```
 
-不要只检查一组文件，却用另一组文件启动。
+只检查一组文件却用另一组文件启动，会让验证与实际运行脱节。
 
-## 14. 项目名会改变资源名称
-
-Compose 项目名通常来自目录名，也可以通过参数覆盖：
+Compose 项目名通常来自目录，也可以显式指定：
 
 ```bash
 docker compose -p compose-lesson config
+docker compose ls
 ```
 
-不同项目名会创建不同的容器、网络和 Volume。检查：
+不同项目名会产生不同容器、网络和 Volume。自动化脚本应固定项目目录、项目名和 Compose 文件顺序，避免在错误位置操作另一套环境。
+
+## 7. 更新镜像、重新创建和故障排查要有明确范围
 
 ```bash
-docker compose ls
-docker compose ps
+docker compose pull
+docker compose up -d
 ```
 
-自动化脚本中应明确项目目录和项目名，防止在错误位置操作另一套环境。
+拉取新镜像和重建服务可能改变应用、数据库版本与兼容性。生产或重要开发数据应先阅读变更、备份卷并验证迁移。只想重建一个服务时明确写出服务名，避免无意义地重启整组项目。
 
-## 15. 一套分层排错顺序
-
-先检查最终配置和目标：
+项目故障时沿对象层次检查：
 
 ```bash
 pwd
 docker context show
 docker compose config
 docker compose config --services
-```
-
-再看生命周期：
-
-```bash
 docker compose ps -a
-docker compose logs --tail=200
-```
-
-服务间连接失败时：
-
-```bash
-docker compose exec db hostname
-docker network inspect "$(docker compose ps -q db | xargs docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{end}}')"
-```
-
-更简单时，可以先检查服务是否在同一网络，并在容器内部测试服务名解析和端口。不要先改成固定 IP。
-
-端口问题：
-
-```bash
+docker compose logs --tail=200 SERVICE
+docker compose images
 docker compose port web 80
-curl http://127.0.0.1:18080
-```
-
-数据问题：
-
-```bash
 docker compose config --volumes
 docker volume ls
-docker volume inspect VOLUME_NAME
 ```
 
-## 16. 给 AI CLI 的 Compose 边界
+配置解析、容器生命周期、服务日志、端口和数据属于不同层。排查时不应第一反应执行 `down -v`、删除全部卷或清理整个 Docker Engine。
+
+## 8. Compose 项目的完整工作流
 
 ```text
-先只读检查 compose.yaml、Dockerfile、.env.example 和启动脚本。
-先运行 docker compose config，不要直接 up。
-
-说明：
-- 每个服务的职责；
-- 服务间使用的名称和端口；
-- 哪些端口暴露到宿主机；
-- 哪些数据位于 Bind Mount 或 Named Volume；
-- 哪些值属于秘密；
-- 哪些服务是一次性任务或 Profile；
-- 修改后的验证和停止方式。
-
-未经确认不要执行 down -v、prune、删除 Volume、修改生产环境或扩大端口暴露。
-不要把数据库密码、Token 或完整 docker compose config 输出发给外部服务。
+进入正确项目目录并确认 Docker Context、项目名和文件组合
+→ docker compose config 解析最终配置与变量插值
+→ 前台 up 观察首次生命周期
+→ ps、日志、端口和协议分别验证
+→ 服务间使用服务名，宿主使用映射端口
+→ 源码与数据选择不同存储
+→ 后台运行后持续观察
+→ down 停止，删除 Volume 单独决策
 ```
+
+让 Agent 修改 Compose 时，应要求它先读取 Compose 文件、Dockerfile、`.env.example` 和启动脚本，输出最终配置与资源影响，说明服务职责、内部/宿主端口、存储位置、秘密来源、一次性服务和 Profile。删除卷、扩大端口暴露、输出真实秘密、升级数据库主版本或改变项目名都需要单独确认。
 
 继续阅读：
 
 - [镜像、容器、卷与网络](01-镜像容器卷与网络.md)
 - [Docker Desktop 与 Ubuntu Docker Engine](02-Docker-Desktop与Ubuntu-Docker-Engine.md)
 - [GPU 容器与权限边界](04-GPU容器与权限边界.md)
-
-官方参考：
-
-- [Docker Compose](https://docs.docker.com/compose/)
-- [Compose Specification](https://docs.docker.com/reference/compose-file/)
-- [Compose networking](https://docs.docker.com/compose/how-tos/networking/)
-- [Compose startup order](https://docs.docker.com/compose/how-tos/startup-order/)
-- [Compose environment variables](https://docs.docker.com/compose/how-tos/environment-variables/)

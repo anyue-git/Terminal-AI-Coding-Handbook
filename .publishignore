@@ -1,0 +1,39 @@
+# 《终端与 AI 编程手册》公开发布排除规则
+#
+# 本文件由 scripts/export_public.sh 通过 rsync --exclude-from 读取。
+# 规则只决定哪些源仓库文件不进入公开快照；不要在这里写入凭据或其他秘密值。
+
+# 本地环境与凭据
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# 编辑器、系统和缓存文件
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# 私有草稿和内部维护材料
+Private/
+Drafts/
+Internal/
+private/
+drafts/
+internal/
+*.private.*
+*.internal.*
+
+# 仅供私有源仓库运行的发布审计工作流
+.github/workflows/source-release-audit.yml
+
+# 本地生成的临时发布目录
+.publish-preview/

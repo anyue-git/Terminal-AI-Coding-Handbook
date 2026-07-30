@@ -1,10 +1,10 @@
 # 01 Homebrew 与 PATH
 
-Homebrew 是 macOS 常用的软件包管理器。它不仅负责下载软件，还决定软件安装到哪里、怎样升级和卸载，以及命令是否能被当前 Shell 找到。本章不追求记住很多 `brew` 子命令，而是通过安装 `ripgrep` 完成一条完整流程：确认架构和 Homebrew 前缀、检查 PATH、搜索软件、安装、验证命令来源，并理解 Formula、Cask 和 keg-only。
+Homebrew 是 macOS 常用的软件包管理器。它不仅负责下载软件，还决定软件安装到哪里、如何升级和卸载，以及当前 Shell 最终会运行哪个同名命令。本章不追求背诵大量 `brew` 子命令，而是用安装 `ripgrep` 贯穿一条完整流程：确认架构与前缀、检查 PATH、搜索和安装软件、验证命令来源，并理解 Formula、Cask 与 keg-only。
 
-## 1. 先确认本机架构与现有安装
+## 1. 先确认架构、前缀和现有安装
 
-在 Mac 终端执行：
+在 Mac 执行：
 
 ```bash
 uname -m
@@ -14,138 +14,56 @@ brew --version
 brew --prefix
 ```
 
-Apple Silicon Mac 通常看到：
+Apple Silicon 默认前缀通常是 `/opt/homebrew`，Intel Mac 通常是 `/usr/local`。这些路径与预编译包和命令链接有关，不应根据旧教程猜测，也不要为了“统一”两台不同架构的 Mac 手工移动 Homebrew。
 
-```text
-arm64
-arm64
-/opt/homebrew/bin/brew
-Homebrew ...
-/opt/homebrew
-```
-
-Intel Mac 的默认前缀通常是：
-
-```text
-/usr/local
-```
-
-Homebrew 官方支持的默认位置之所以重要，是因为大量预编译包会按照这些前缀构建。不要只根据旧教程猜测路径，也不要为了“统一”两台不同架构的 Mac，把 Homebrew 手工移动到同一个目录。
-
-如果 `command -v brew` 没有输出，但你怀疑已经安装过，可以检查默认位置：
+若 `command -v brew` 没有输出，但怀疑已经安装过，可以检查默认位置：
 
 ```bash
 ls -l /opt/homebrew/bin/brew 2>/dev/null
 ls -l /usr/local/bin/brew 2>/dev/null
 ```
 
-发现文件存在时，问题可能是 PATH，而不是没有安装。不要连续重复运行安装脚本，否则可能把一个简单的 Shell 配置问题变成多套安装并存。
+文件存在却找不到命令，通常是 PATH 或 Shell 初始化问题，不应立即重复运行安装脚本。Homebrew 官方安装命令和系统要求可能变化，本手册不复制长期固定的一键脚本；应从官方页面获取当前指令，确认 URL、脚本修改范围和安装器给出的 `Next steps`。缺少 Apple Command Line Tools 时，按官方提示使用 `xcode-select --install`。
 
-## 2. 安装前理解官方脚本会做什么
+## 2. `brew shellenv` 把 Homebrew 接入当前 Shell
 
-Homebrew 官方安装方式会使用远程脚本。运行任何类似：
-
-```bash
-curl URL | sh
-```
-
-的命令前，都应确认 URL 属于官方来源、当前页面仍在维护，并阅读脚本将修改的路径。Homebrew 官方安装器会显示计划并要求确认，但这不意味着从论坛、网盘或镜像站复制的任意一键命令都同样可信。
-
-安装 Homebrew 还需要受支持的 macOS 环境和 Apple Command Line Tools。缺少工具时，可按官方提示安装：
-
-```bash
-xcode-select --install
-```
-
-本手册不复制一个可能随时间变化的完整安装命令。应从 Homebrew 官网获取当前指令，并在执行后保存安装器输出中的 “Next steps”。
-
-## 3. `brew shellenv` 为什么重要
-
-Homebrew 安装结束后，通常会要求把一条 `shellenv` 初始化写入 Shell 配置。例如 Apple Silicon 常见：
+Apple Silicon 常见初始化形式是：
 
 ```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"
 ```
 
-这条命令会输出并应用 Homebrew 需要的环境变量，其中最关键的是让 Homebrew 的 `bin` 和 `sbin` 进入 PATH。
-
-查看它准备设置什么：
+它会设置 Homebrew 所需环境变量，并把 `bin` 和 `sbin` 加入 PATH。先查看它准备输出什么：
 
 ```bash
 /opt/homebrew/bin/brew shellenv
-```
-
-查看当前 PATH 的每一项：
-
-```bash
 printf '%s\n' "$PATH" | tr ':' '\n'
 ```
 
-Shell 从前到后搜索命令。若多个目录中存在同名程序，排在前面的版本通常先被运行。
+zsh 登录环境常使用 `~/.zprofile`，交互式别名和提示符常放在 `~/.zshrc`，但实际加载方式取决于终端启动模式。安装器要求写入哪个文件，就按当前提示处理，不要同时向多个启动文件重复追加。
 
-macOS zsh 常把登录环境初始化放在：
-
-```text
-~/.zprofile
-```
-
-交互式别名和提示符通常放在：
-
-```text
-~/.zshrc
-```
-
-实际加载方式仍取决于终端启动模式。安装器给出哪个文件，就先按当前官方提示处理，不要同时向 `.zprofile`、`.zshrc` 和其他文件重复追加同一行。
-
-检查是否已经写过：
+修改前检查并备份：
 
 ```bash
 grep -n 'brew shellenv' ~/.zprofile ~/.zshrc 2>/dev/null
-```
-
-修改前备份：
-
-```bash
 cp ~/.zprofile ~/.zprofile.backup
-```
-
-语法检查：
-
-```bash
 zsh -n ~/.zprofile
 ```
 
-然后新开一个终端验证，通常比反复 `source` 一份有错误的配置更容易判断启动过程。
+随后新开终端验证，通常比反复 `source` 一份有错误的配置更安全。
 
-## 4. 用 `type` 和 `command -v` 判断实际命令来源
+## 3. 安装成功不等于当前运行的是新版本
 
-一台 Mac 上可能同时存在系统工具、Homebrew 工具、Python 虚拟环境和 Node 全局命令。检查所有候选：
-
-```bash
-type -a brew
-type -a python3
-type -a git
-type -a rg
-```
-
-查看当前真正会运行哪一个：
+一台 Mac 可能同时存在系统工具、Homebrew、Python 虚拟环境、Node 全局命令和 Rosetta 下的另一套安装。使用：
 
 ```bash
+type -a brew python3 git rg
 command -v brew
 command -v python3
 command -v rg
 ```
 
-`type -a` 能显示别名、函数、内建命令和所有 PATH 候选；`command -v` 适合确认当前解析结果。仅仅看到“安装成功”不能证明你运行的就是刚安装的版本。
-
-Apple Silicon 上如果同时看到：
-
-```text
-/opt/homebrew/bin/brew
-/usr/local/bin/brew
-```
-
-可能存在原生 arm64 与 Intel/Rosetta 两套 Homebrew。继续检查：
+`type -a` 显示别名、函数和所有 PATH 候选，`command -v` 显示当前解析结果。Apple Silicon 若同时出现 `/opt/homebrew/bin/brew` 和 `/usr/local/bin/brew`，可能存在 arm64 与 Intel/Rosetta 两套 Homebrew；继续检查：
 
 ```bash
 arch
@@ -153,79 +71,38 @@ file "$(command -v brew)"
 brew --prefix
 ```
 
-不要直接删除 `/usr/local`。其中可能包含其他软件和历史数据，应先记录两套安装内容并按官方迁移方式处理。
+不要直接删除 `/usr/local`，其中可能还有其他软件和历史数据。先记录两套安装的来源和内容，再按官方迁移方式处理。
 
-## 5. Formula、Cask、keg 和 prefix
+## 4. Formula、Cask、prefix 与 keg-only
 
-Homebrew 常见术语可以这样理解：
-
-```text
-Formula
-→ 命令行工具、库或可由 Homebrew 管理的服务
-
-Cask
-→ 预编译并由上游签名的 macOS 应用或大型二进制软件
-
-prefix
-→ Homebrew 的安装根目录，例如 /opt/homebrew
-
-keg
-→ 某个 Formula 某个版本的实际安装目录
-
-keg-only
-→ 已安装到 Cellar，但没有默认链接进通用前缀
-```
-
-安装命令行工具通常使用：
+Formula 通常描述命令行工具、库或服务；Cask 安装上游提供的图形应用或大型预编译软件；prefix 是 Homebrew 根目录；keg 是某个 Formula 某个版本的实际目录；keg-only 表示软件已安装到 Cellar，但没有默认链接到通用前缀。
 
 ```bash
 brew install ripgrep
-```
-
-安装图形应用常见：
-
-```bash
 brew install --cask visual-studio-code
-```
-
-“是否在 Finder 中出现图标”不是判断 Formula 是否安装成功的方法；“终端中能否找到命令”也不能完全代表 Cask 应用是否正常。
-
-查看软件信息：
-
-```bash
 brew info ripgrep
 ```
 
-输出会说明版本、依赖、安装位置、是否 keg-only，以及可能需要额外添加到 PATH 的提示。
+Finder 中是否有图标不能判断 Formula 是否成功，终端能否找到命令也不能完全代表 Cask 应用状态。`brew info` 会说明版本、依赖、安装位置和 keg-only 提示。
 
-## 6. 完成一次搜索、安装和验证
+## 5. 完成一次搜索、安装和实际验证
 
-先确认 `rg` 是否已经存在：
+先检查 `rg` 是否已经存在：
 
 ```bash
 command -v rg
 rg --version
 ```
 
-若命令不存在，搜索 Homebrew 中的包：
+不存在时搜索并查看信息：
 
 ```bash
 brew search ripgrep
-```
-
-查看信息：
-
-```bash
 brew info ripgrep
-```
-
-确认包名和来源后安装：
-
-```bash
 brew install ripgrep
 ```
 
-安装完成后不要只看最后一行，继续验证：
+安装后验证路径、版本、包记录和实际功能：
 
 ```bash
 rg --version
@@ -233,160 +110,46 @@ command -v rg
 type -a rg
 brew list --versions ripgrep
 brew --prefix ripgrep
-```
 
-在 Apple Silicon 上，命令通常来自：
-
-```text
-/opt/homebrew/bin/rg
-```
-
-接着做一个实际测试：
-
-```bash
 mkdir -p ~/terminal-practice/brew-demo
 cd ~/terminal-practice/brew-demo
 printf '%s\n' 'TODO: write tests' 'done' > notes.txt
 rg -n 'TODO' .
 ```
 
-应看到 `notes.txt` 中匹配行。这样才完成了“包已安装、Shell 能找到、程序能运行、实际功能符合预期”的验证闭环。
+这才完成“包已安装、Shell 能找到、当前运行的是预期程序、功能可用”的闭环。
 
-## 7. 已安装但命令找不到时怎么查
-
-假设 `brew list --versions ripgrep` 显示已安装，但 `rg` 提示找不到。按顺序检查：
+## 6. 已安装但命令找不到时按层调查
 
 ```bash
 brew --prefix
-brew --prefix ripgrep
-brew list ripgrep
-command -v rg
-type -a rg
+brew --prefix FORMULA
+brew list FORMULA
+command -v COMMAND
+type -a COMMAND
 printf '%s\n' "$PATH" | tr ':' '\n'
-```
-
-可能原因包括：
-
-- Homebrew 的 `bin` 没进入 PATH；
-- 当前终端没有重新加载登录配置；
-- 使用了另一套架构的 Shell；
-- Formula 是 keg-only；
-- 命令名与 Formula 名不同；
-- 运行环境位于 IDE、服务或非交互 Shell，加载的配置不同。
-
-不要为了让命令出现，随意在 `/usr/local/bin` 或 `/opt/homebrew/bin` 手工创建软链接。先阅读：
-
-```bash
 brew info FORMULA
 ```
 
-如果 Formula 是 keg-only，官方信息通常会给出适合当前版本的 PATH 或编译环境设置。
+常见原因包括 Homebrew 的 bin 不在 PATH、当前终端未加载新配置、使用另一架构 Shell、Formula 为 keg-only、命令名与包名不同，或 IDE/服务/非交互 Shell 加载了不同环境。不要为让命令出现而随意在 `/usr/local/bin` 或 `/opt/homebrew/bin` 手工创建软链接；keg-only 软件应按 `brew info` 给出的当前版本提示设置 PATH 或构建变量。
 
-## 8. 更新元数据与升级软件是两件事
-
-更新 Homebrew 自身和包元数据：
+## 7. 更新、升级、权限修复和清理要拆开决策
 
 ```bash
 brew update
-```
-
-查看可升级项目：
-
-```bash
 brew outdated
-```
-
-升级一个明确的软件：
-
-```bash
 brew upgrade ripgrep
 ```
 
-无参数的：
+`brew update` 更新 Homebrew 与元数据，`brew outdated` 只列出可升级项目，指定 Formula 的 `brew upgrade` 才执行目标升级。无参数升级可能同时改变 Python、Node、数据库、编译器和 AI CLI 运行时，不适合在比赛、演示、截止前或重要训练开始前随手执行。稳妥流程是识别目标、阅读主版本变化、只升级明确软件、重新确认命令路径与版本，再运行项目测试。
 
-```bash
-brew upgrade
-```
-
-可能升级大量 Formula 和 Cask。它不适合在比赛、演示、提交截止前或重要训练开始前随手运行。Python、Node、数据库、编译器和 AI CLI 运行时的版本变化，都可能影响项目。
-
-更稳妥的流程是：
-
-```text
-brew update
-→ brew outdated
-→ 识别与当前项目有关的软件
-→ 阅读主版本变化
-→ 升级一个明确目标
-→ 验证命令路径与版本
-→ 运行项目测试
-```
-
-Homebrew 命令成功，只能说明包管理操作完成，不代表所有项目都兼容新版本。
-
-## 9. 卸载与清理先预览影响
-
-卸载一个明确的 Formula：
-
-```bash
-brew uninstall FORMULA
-```
-
-执行前查看谁依赖它：
-
-```bash
-brew uses --installed FORMULA
-brew deps FORMULA
-```
-
-清理旧下载和旧版本前先预览：
-
-```bash
-brew cleanup -n
-```
-
-确认后才考虑：
-
-```bash
-brew cleanup
-```
-
-不要手工批量删除 `/opt/homebrew/Cellar`、`/opt/homebrew/opt` 或 `/usr/local` 中不认识的目录。Homebrew 的链接和依赖关系应尽量由 Homebrew 自己维护。
-
-Cask 的 `--zap` 可能删除应用相关的配置和数据，有些文件还可能被其他应用共享。它不是普通卸载的默认选项。
-
-## 10. `brew doctor` 是诊断工具，不是自动修复按钮
-
-运行：
-
-```bash
-brew doctor
-```
-
-它可能报告旧 Command Line Tools、非默认前缀、意外头文件、多套 Homebrew 或 PATH 问题。Warning 不一定与当前问题有关，也不代表整个系统已经损坏。
-
-处理顺序：
-
-1. 阅读完整信息；
-2. 判断它是否能解释当前故障；
-3. 用 `brew config`、`brew --prefix`、`arch` 和 `type -a` 补充证据；
-4. 查阅 Homebrew 官方文档；
-5. 修改前备份配置和包清单；
-6. 一次只处理一个确认的问题。
-
-不要把论坛中的 `sudo chown -R`、全局删除目录或批量创建软链接当成通用修复。
-
-## 11. 为什么不要使用 `sudo brew`
-
-不应执行：
+Homebrew 的默认前缀在安装完成后应由普通用户管理，不要用下面的方式绕过权限错误：
 
 ```bash
 sudo brew install PACKAGE
 ```
 
-Homebrew 的默认前缀设计为安装后由普通用户管理。使用 sudo 可能生成 root 所有文件，导致后续安装、升级和卸载继续要求管理员权限，并污染目录所有权。
-
-遇到权限错误时先检查：
+`sudo` 可能在 Homebrew 目录中生成 root 所有文件，让后续安装、升级和卸载继续要求管理员权限。遇到 `Permission denied` 时先确认实际前缀、目录所有者和诊断结果：
 
 ```bash
 brew --prefix
@@ -394,35 +157,48 @@ ls -ld "$(brew --prefix)"
 brew doctor
 ```
 
-然后根据官方诊断处理具体异常。不要递归放宽整个 Homebrew 目录权限，也不要把目录改成所有用户可写。
+只修复能够确认的异常，不递归放宽整个 Homebrew 前缀，也不要把目录改成所有用户可写。论坛中的 `sudo chown -R`、全局删除目录或批量创建软链接都不应作为通用恢复步骤。
 
-## 12. AI CLI 的 Homebrew 操作边界
+卸载前查看依赖关系：
 
-可以给 Agent 明确约束：
-
-```text
-先检查命令是否已存在，输出 command -v、type -a、版本、brew 前缀和架构。
-缺少依赖时，说明 Formula/Cask 名称、用途、来源和预计影响。
-未经确认不要安装、全量升级、cleanup、link、unlink、卸载或修改 Shell 配置。
-不要使用 sudo brew，不要递归修改 Homebrew 目录权限。
-完成后验证实际命令路径、版本和项目测试。
+```bash
+brew uses --installed FORMULA
+brew deps FORMULA
+brew uninstall FORMULA
 ```
 
-对于 `command not found`，推荐排查顺序是：
+清理旧版本和下载先预演：
+
+```bash
+brew cleanup -n
+```
+
+不要手工批量删除 Cellar、opt 或 `/usr/local` 中不认识的目录。Cask 的 `--zap` 可能删除配置和数据，也不是普通卸载的默认选项。
+
+## 8. `brew doctor` 用于诊断，不是自动修复
+
+```bash
+brew doctor
+```
+
+它可能报告旧工具链、非默认前缀、多套安装、意外头文件和 PATH 问题。警告不一定都与当前故障有关，应阅读上下文并逐项判断；不要让 Agent 将所有建议自动执行。需要提交排障信息时，可使用 `brew config`、`brew doctor` 和目标包的 `brew info`，但先检查输出是否含用户名、内部路径或代理信息。
+
+## 9. 一条稳定的 Homebrew 工作流
 
 ```text
-命令是否已经存在
-→ 当前 Shell 实际解析到哪里
-→ Formula 是否已安装
-→ Homebrew 前缀和架构是否正确
-→ PATH 是否包含正确目录
-→ Shell 配置是否被加载
-→ 是否为 keg-only 或命令名不同
+确认 Mac 架构和 brew 前缀
+→ 查看 shellenv 与 PATH
+→ 用 type/command -v 确认实际命令来源
+→ 搜索和阅读 Formula/Cask 信息
+→ 安装一个明确目标
+→ 验证路径、版本和实际功能
+→ 升级、权限修复、卸载和清理分别评估影响
 ```
 
 继续阅读：
 
 - [服务、版本与常见故障](02-服务版本与常见故障.md)
+- [Shell 到底是什么](../Part-01-基础篇/03-Shell到底是什么.md)
 - [Python 解释器与 pip 定位](../Part-07-Python环境/01-Python解释器与pip定位.md)
 
 官方参考：
