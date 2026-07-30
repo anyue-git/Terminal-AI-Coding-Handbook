@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - release/v3.0
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -18,12 +21,13 @@ jobs:
       - name: Checkout release branch
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - name: Download validated public snapshot
         shell: bash
         env:
-          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-dd28-81fd-a6b6-b1b29bbd4427/raw?se=2026-07-30T11:48:54Z&sp=r&sv=2026-02-06&sr=b&scid=b597cc34-f09e-5126-aa0e-32a19bfb4eab&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:25:57Z&ske=2026-07-31T23:25:57Z&sks=b&skv=2026-02-06&sig=EoBwBUH06XUzZXT8%2Bi6nyV%2BsMDD7jjWp6%2Bj9OxE%2Bpzk%3D"
+          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-84a8-81fd-9955-7a8cbe39c405/raw?se=2026-07-30T11:51:45Z&sp=r&sv=2026-02-06&sr=b&scid=9bd8890e-75fc-5779-9ee8-37d2c9971ab3&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:34:52Z&ske=2026-07-31T23:34:52Z&sks=b&skv=2026-02-06&sig=9TWXQEbVQLma1SgVuHpAuHWmdGMC5/rp6qx9xuDWFPg%3D"
         run: |
           curl --fail --location --retry 2 \
             --output "$RUNNER_TEMP/public-snapshot.zip" \
