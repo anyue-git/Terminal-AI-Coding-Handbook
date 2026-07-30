@@ -1,0 +1,65 @@
+name: Import V3 Public Snapshot
+
+on:
+  push:
+    branches:
+      - release/v3.0
+
+permissions:
+  contents: write
+
+jobs:
+  import-snapshot:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download validated public snapshot
+        shell: bash
+        env:
+          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-dd28-81fd-a6b6-b1b29bbd4427/raw?se=2026-07-30T11:48:54Z&sp=r&sv=2026-02-06&sr=b&scid=b597cc34-f09e-5126-aa0e-32a19bfb4eab&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:25:57Z&ske=2026-07-31T23:25:57Z&sks=b&skv=2026-02-06&sig=EoBwBUH06XUzZXT8%2Bi6nyV%2BsMDD7jjWp6%2Bj9OxE%2Bpzk%3D"
+        run: |
+          curl --fail --location --retry 2 \
+            --output "$RUNNER_TEMP/public-snapshot.zip" \
+            "$SNAPSHOT_URL"
+          mkdir -p "$RUNNER_TEMP/public-snapshot"
+          unzip -q "$RUNNER_TEMP/public-snapshot.zip" \
+            -d "$RUNNER_TEMP/public-snapshot"
+
+      - name: Verify and apply snapshot
+        shell: bash
+        run: |
+          snapshot="$RUNNER_TEMP/public-snapshot"
+          test -f "$snapshot/README.md"
+          test -f "$snapshot/SUMMARY.md"
+          test -f "$snapshot/LICENSE"
+          test -f "$snapshot/.github/workflows/markdown-check.yml"
+          test ! -e "$snapshot/.github/workflows/source-release-audit.yml"
+          test ! -e "$snapshot/Private"
+          test ! -e "$snapshot/Drafts"
+          test ! -e "$snapshot/Internal"
+
+          rm -rf "$snapshot/.git"
+          rsync -a --delete \
+            --exclude='/.git' \
+            --exclude='/.git/' \
+            "$snapshot/" ./
+
+          python3 scripts/check_markdown.py --strict-warnings
+          python3 scripts/test_audit_tools.py
+
+      - name: Commit V3 public snapshot
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m '发布 V3.0 公开快照'
+          git push origin HEAD:release/v3.0
