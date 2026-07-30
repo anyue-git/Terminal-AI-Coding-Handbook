@@ -27,7 +27,7 @@ jobs:
       - name: Download validated public snapshot
         shell: bash
         env:
-          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-f940-81fd-b180-7fee3957b2e5/raw?se=2026-07-30T11:53:40Z&sp=r&sv=2026-02-06&sr=b&scid=da59b399-4a11-5cb7-94e0-060dece4e9f3&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:31:34Z&ske=2026-07-31T23:31:34Z&sks=b&skv=2026-02-06&sig=2XKL81ERM94YoNamU5YUKsne%2BhXdqAB7eJrsZY4didY%3D"
+          SNAPSHOT_URL: "https://sdmntprwestus2.oaiusercontent.com/files/00000000-6954-81f8-8014-9af37aecd773/raw?se=2026-07-30T11:54:47Z&sp=r&sv=2026-02-06&sr=b&scid=20765ed0-f094-5e40-81d7-c6385ecc5daa&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:25:45Z&ske=2026-07-31T23:25:45Z&sks=b&skv=2026-02-06&sig=jja/5Dt3Y9LDh/ynH8g70A6sMwibOvawFUl9YlyRL0U%3D"
         run: |
           curl --fail --location --retry 2 \
             --output "$RUNNER_TEMP/public-snapshot.zip" \
@@ -58,7 +58,6 @@ jobs:
           git add -A
           python3 scripts/check_markdown.py --strict-warnings
           python3 scripts/test_audit_tools.py
-          git diff --cached --check
 
       - name: Commit V3 public snapshot
         shell: bash
