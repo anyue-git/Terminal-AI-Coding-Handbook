@@ -1,0 +1,78 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/release.json
+      - RELEASE_NOTES_V*.md
+      - .github/workflows/publish-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish-release:
+    if: github.repository == 'anyue-git/Terminal-AI-Coding-Handbook'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout public repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read release manifest
+        id: release
+        shell: bash
+        run: |
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('.github/release.json').read_text(encoding='utf-8'))
+          for key in ('tag', 'name', 'notes_file', 'target'):
+              value = manifest.get(key)
+              if not isinstance(value, str) or not value.strip():
+                  raise SystemExit(f'missing or invalid release field: {key}')
+              print(f'{key}={value}')
+          print(f"prerelease={'true' if manifest.get('prerelease', False) else 'false'}")
+          PY
+
+      - name: Validate release notes
+        shell: bash
+        env:
+          NOTES_FILE: ${{ steps.release.outputs.notes_file }}
+        run: |
+          test -f "$NOTES_FILE"
+          test -s "$NOTES_FILE"
+
+      - name: Create or update release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+          RELEASE_NAME: ${{ steps.release.outputs.name }}
+          NOTES_FILE: ${{ steps.release.outputs.notes_file }}
+          TARGET: ${{ steps.release.outputs.target }}
+          PRERELEASE: ${{ steps.release.outputs.prerelease }}
+        run: |
+          prerelease_flag=()
+          if [ "$PRERELEASE" = "true" ]; then
+            prerelease_flag=(--prerelease)
+          fi
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" \
+              --title "$RELEASE_NAME" \
+              --notes-file "$NOTES_FILE" \
+              --target "$TARGET" \
+              "${prerelease_flag[@]}"
+          else
+            gh release create "$TAG" \
+              --title "$RELEASE_NAME" \
+              --notes-file "$NOTES_FILE" \
+              --target "$TARGET" \
+              "${prerelease_flag[@]}"
+          fi

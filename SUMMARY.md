@@ -12,6 +12,8 @@
 
 - [项目介绍](README.md)
 - [全书路线图](ROADMAP.md)
+- [V3.0 叙事重构路线图](V3.0-ROADMAP.md)
+- [V3.0 发布说明](RELEASE_NOTES_V3.0.md)
 - [V2.0 发布说明](RELEASE_NOTES_V2.0.md)
 - [写作规范与内容审查标准](CONTRIBUTING.md)
 
@@ -127,6 +129,13 @@
 - [危险命令清单](Appendix/危险命令清单.md)
 - [术语表](Appendix/术语表.md)
 - [版本化工具核对表](Appendix/版本化工具核对表.md)
+- [公开仓库发布流程](Appendix/公开发布流程.md)
+- [V3.0 叙事结构审计](Appendix/V3.0-叙事结构审计.md)
+- [V3.0 文风二次审查](Appendix/V3.0-文风二次审查.md)
+- [V3.0 样章内容覆盖](Appendix/V3.0-样章内容覆盖.md)
+- [V3.0 批次一内容覆盖](Appendix/V3.0-批次一内容覆盖.md)
+- [V3.0 批次二内容覆盖](Appendix/V3.0-批次二内容覆盖.md)
+- [V3.0 批次三内容覆盖](Appendix/V3.0-批次三内容覆盖.md)
+- [V3.0 批次四内容覆盖](Appendix/V3.0-批次四内容覆盖.md)
 - [内容审查记录](Appendix/内容审查记录.md)
 - [更新记录](Appendix/更新记录.md)
-- [自动检查报告](Appendix/自动检查报告.md)

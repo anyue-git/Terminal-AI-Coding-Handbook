@@ -2,30 +2,29 @@
 
 > 最近核对：2026-07-29
 
-Mac 上的 `.venv` 不能通过 rsync 复制到 Ubuntu 后继续使用。两台机器的平台不同：
+Mac 上的 `.venv` 不能通过 rsync 复制到 Ubuntu 后继续使用。两台机器的操作系统、CPU 架构和 GPU 后端不同：
 
 ```text
-macOS + Apple Silicon + arm64 + MPS
+macOS + Apple Silicon + arm64 + CPU/MPS
 ≠
 Ubuntu + x86_64 + NVIDIA CUDA
 ```
 
-虚拟环境不是一个跨平台压缩包。正确做法是共享源码、依赖声明和锁文件，然后在每台机器本地创建兼容环境。
+虚拟环境包含解释器或绝对路径、平台专用脚本、wheel、动态库和编译产物；Mac 常见 Mach-O，Ubuntu 使用 ELF。两边可以共享源码、测试和依赖决策，但已经安装好的环境必须各自在本机创建。
 
-## 1. `.venv` 里有什么
+## 1. 同步项目声明，不同步环境目录
 
-虚拟环境通常包含：
+适合通过 Git 或 rsync 共享的内容包括：
 
-- Python 解释器或解释器链接；
-- 写死的绝对路径；
-- 平台专用激活脚本；
-- macOS 或 Linux 对应 wheel；
-- 编译后的动态库；
-- CPU 架构相关二进制。
+```text
+源码与测试
+pyproject.toml / uv.lock / .python-version
+requirements.txt
+environment.yml
+配置模板和训练脚本
+```
 
-Mac 常见二进制格式是 Mach-O，Ubuntu 是 ELF。即使两边都叫 `.venv`，内部文件也不能互换。
-
-同步时排除：
+本地生成的 `.venv/`、Conda 环境目录、`__pycache__/`、wheel 缓存、模型缓存和系统 CUDA 目录不进入源码同步；认证目录、API Key 和 SSH 私钥也不属于项目环境。最小排除项：
 
 ```text
 .venv/
@@ -34,140 +33,33 @@ __pycache__/
 *.pyc
 ```
 
-## 2. 应该共享和不应该共享的内容
+共享锁文件表示两台机器基于同一依赖决策解析平台适配包，不代表最终安装的二进制字节相同。一个锁文件可以包含平台标记和多个候选构建，实际选择仍由系统、架构和 Python 版本决定。
 
-应共享：
+## 2. 用同一项目文件在两台机器分别同步
 
-```text
-源码和测试
-README
-pyproject.toml
-uv.lock
-.python-version
-requirements.txt
-environment.yml
-配置模板
-训练脚本
-```
-
-不应直接共享：
-
-```text
-.venv/
-Conda 环境目录
-编译产物
-wheel 缓存
-模型缓存
-系统 CUDA 目录
-API Key
-SSH 私钥
-整个用户配置目录
-```
-
-## 3. 建立一个跨平台练习项目
-
-在 Mac：
+以 uv 项目为例，Mac 中进入项目并建立本地环境：
 
 ```bash
-mkdir -p ~/Projects/cross-platform-ml/src/cross_platform_ml \
-  ~/Projects/cross-platform-ml/tests
 cd ~/Projects/cross-platform-ml
-```
-
-创建 `pyproject.toml`：
-
-```toml
-[project]
-name = "cross-platform-ml"
-version = "0.1.0"
-requires-python = ">=3.11,<3.14"
-dependencies = [
-  "numpy>=2",
-]
-
-[dependency-groups]
-dev = [
-  "pytest>=8",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-```
-
-创建模块：
-
-```bash
-cat > src/cross_platform_ml/device.py <<'PY'
-def describe_device() -> str:
-    try:
-        import torch
-    except ImportError:
-        return "torch-not-installed"
-
-    if torch.cuda.is_available():
-        return "cuda"
-    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return "mps"
-    return "cpu"
-PY
-```
-
-创建测试：
-
-```bash
-cat > tests/test_device.py <<'PY'
-from cross_platform_ml.device import describe_device
-
-
-def test_device_name_is_known():
-    assert describe_device() in {
-        "cuda",
-        "mps",
-        "cpu",
-        "torch-not-installed",
-    }
-PY
-```
-
-## 4. 推荐路线：使用 uv
-
-在 Mac 项目目录：
-
-```bash
 uv python install
 uv lock
 uv sync --locked
 uv run --locked pytest -q
 ```
 
-生成：
-
-```text
-.venv/
-uv.lock
-```
-
-提交 `uv.lock`，不提交 `.venv`。
-
-在 `.gitignore` 和 `.rsyncignore` 中加入：
-
-```text
-.venv/
-```
-
-同步到 Ubuntu：
+提交 `pyproject.toml`、`uv.lock` 和源码，忽略 `.venv/`。把项目同步到 Ubuntu：
 
 ```bash
 rsync -av --dry-run \
   --exclude-from='.rsyncignore' \
   ./ gpu-laptop:~/projects/cross-platform-ml/
+
 rsync -av \
   --exclude-from='.rsyncignore' \
   ./ gpu-laptop:~/projects/cross-platform-ml/
 ```
 
-Ubuntu：
+Ubuntu 在自己的项目目录重新创建：
 
 ```bash
 ssh gpu-laptop
@@ -177,92 +69,19 @@ uv sync --locked
 uv run --locked pytest -q
 ```
 
-同一个锁文件可以包含多平台候选，uv 会在每台机器选择兼容的发行包。锁文件相同不代表实际安装的 wheel 字节完全相同。
+这条流程共享的是项目声明、锁文件和测试，两个 `.venv` 始终属于各自平台。uv 的声明、锁定与精确同步细节见[依赖声明、锁定与环境复现](../Part-07-Python环境/03-依赖声明锁定与环境复现.md)。
 
-## 5. PyTorch 为什么需要单独设计
-
-PyTorch 的 CPU、MPS 和 CUDA 构建不完全等价。你需要明确项目策略，而不是在 Ubuntu 临时安装一套 CUDA torch 后就忘记记录。
-
-常见策略有三种。
-
-### 策略 A：核心依赖锁定，PyTorch 按平台说明安装
-
-适合初学和官方安装命令变化较快的项目：
-
-```text
-uv sync --locked
-→ 安装通用依赖
-
-Mac
-→ 按当前官方方式安装适用构建
-
-Ubuntu
-→ 按 PyTorch Start Locally 安装当前 CUDA 构建
-```
-
-README 必须记录两边命令和核验方式。
-
-### 策略 B：使用平台标记和多个索引
-
-适合能够正确配置 uv/pip 源的项目。需要在两台机器真实测试锁定结果，不应凭空写一份复杂配置。
-
-### 策略 C：容器固定 Ubuntu GPU 环境
-
-Ubuntu 正式训练使用固定镜像；Mac 只安装 CPU 或 MPS 环境做轻量测试。容器仍需要宿主机 NVIDIA 驱动。
-
-## 6. venv + requirements 路线
-
-Mac：
+使用 venv 或 Conda 时原则不变。两台机器分别创建目录并安装同一份高层声明：
 
 ```bash
-cd ~/Projects/project
+# 在各自机器的项目目录中执行
 python3 -m venv .venv
 source .venv/bin/activate
-python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 python -m pytest
 ```
 
-Ubuntu：
-
-```bash
-cd ~/projects/project
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-python -m pytest
-```
-
-命令相似，但解析到的二进制包可能不同。不要使用：
-
-```bash
-sudo pip install ...
-```
-
-也不要让系统 Python 承担项目依赖。
-
-普通 `pip freeze` 记录的是当前平台完整环境，不一定适合作为另一个平台的直接输入。应区分：
-
-```text
-项目声明
-→ 我需要什么
-
-平台锁定或环境快照
-→ 这台机器实际安装了什么
-```
-
-## 7. Conda 路线
-
-两台机器都可以运行：
-
-```bash
-conda env create -f environment.yml
-```
-
-但不要把某台机器包含所有构建号和平台包的完整导出，当成跨平台通用文件。
-
-更稳妥的结构：
+Conda 的 `environment.yml` 适合保存高层共享依赖；需要精确平台快照时，可以分别维护：
 
 ```text
 environment.yml
@@ -275,33 +94,13 @@ environment.linux.lock.yml
 → Ubuntu 精确快照
 ```
 
-PyTorch 安装渠道应以当前官方页面为准，不长期照搬旧的 Conda Channel 命令。
+## 3. PyTorch 需要明确平台策略
 
-## 8. Mac 和 Ubuntu 的职责不同
+Mac 的 CPU/MPS 构建与 Ubuntu 的 CUDA 构建不是同一包形态。项目应公开说明两台机器怎样安装和验证 PyTorch，而不是只在 Ubuntu 临时安装一次。
 
-Mac：
+对初学者最清楚的策略是：锁定通用核心依赖，PyTorch 根据当前官方安装选择器按平台安装。Mac 选择 CPU/MPS 适配构建，Ubuntu 根据驱动兼容情况选择 CUDA 构建；README 记录两端命令和验证方式。
 
-- 编辑和阅读；
-- Git；
-- 单元测试；
-- CPU/MPS 冒烟测试；
-- 配置生成；
-- AI CLI 规划和修改。
-
-Ubuntu：
-
-- Linux 集成测试；
-- CUDA 验证；
-- 正式训练；
-- GPU 推理；
-- 显存和性能测试；
-- 长时间任务。
-
-不要要求 Mac 完整模拟 Ubuntu CUDA 环境。Mac 通过只能证明 Mac 这一层通过。
-
-## 9. 平台特定依赖要显式表达
-
-`pyproject.toml` 支持环境标记：
+更成熟的项目可以通过环境标记、多个索引或包管理器源规则表达差异：
 
 ```toml
 [project]
@@ -312,13 +111,11 @@ dependencies = [
 ]
 ```
 
-不要把 Linux 专用包无条件写给 macOS，也不要把 macOS 工具写进 Ubuntu 正式环境。
+复杂配置只有在 Mac 与 Ubuntu 都实际完成 locked 同步后才算可用。另一种方案是把 Ubuntu GPU 环境固定在容器中，Mac 只承担 CPU/MPS 测试；容器仍依赖 Ubuntu 宿主机的 NVIDIA 驱动。
 
-GPU 包可能还涉及自定义索引、平台标签和 Python 版本约束。每次修改锁文件后都应在 Mac 与 Ubuntu 分别运行严格同步。
+## 4. 两台机器分别验证自己的职责
 
-## 10. 两边都做解释器核验
-
-Mac：
+Mac 常用于编辑、Git、单元测试、CPU/MPS 冒烟和配置生成：
 
 ```bash
 hostname
@@ -330,7 +127,7 @@ python -c 'import torch; print(torch.__version__); print(torch.backends.mps.is_a
 python -m pytest
 ```
 
-Ubuntu：
+Ubuntu 负责 Linux 集成、CUDA、显存和正式训练：
 
 ```bash
 hostname
@@ -343,20 +140,9 @@ python -c 'import torch; print(torch.__version__); print(torch.version.cuda); pr
 python -m pytest
 ```
 
-## 11. 发现环境漂移
+Mac 测试通过证明通用逻辑在 Mac 环境中成立，无法代替 CUDA 算子和驱动验证。两端出现差异时，比较 Python、解释器路径、包管理器、Git HEAD、锁文件和 torch 构建，而不是先复制另一端的环境目录。
 
-环境漂移包括：
-
-- Python 版本不同；
-- 临时安装依赖但未更新声明；
-- 锁文件未同步；
-- 两边分支或提交不同；
-- wheel 来源不同；
-- Ubuntu 装了错误 torch 构建；
-- Shell 调用了系统 Python；
-- VS Code 选了旧解释器。
-
-记录脚本：
+可以分别生成摘要：
 
 ```bash
 {
@@ -370,79 +156,36 @@ python -m pytest
 } > environment-summary.txt 2>&1
 ```
 
-两台机器分别生成后比较，注意不要把包含私人路径或敏感信息的环境文件公开提交。
+摘要可能包含用户名和绝对路径，公开前检查内容。
 
-## 12. 依赖更新流程
+## 5. 依赖更新从一个维护端发起
 
-不要在 Ubuntu 正式训练前临时执行：
-
-```bash
-pip install 某个包
-```
-
-然后不记录。推荐：
-
-```text
-Mac 或指定维护端修改依赖声明
-→ 更新锁文件
-→ 运行 Mac 测试
-→ 提交依赖变化
-→ 同步到 Ubuntu
-→ Ubuntu 使用 locked 模式重建或同步
-→ 运行 CUDA 冒烟测试
-```
-
-使用 uv：
+指定一台机器或 CI 负责修改依赖声明和锁文件，再让其他平台按 locked 模式重建。uv 路线例如：
 
 ```bash
+# 维护端
 uv add package-name
 uv lock
 uv sync --locked
-```
 
-Ubuntu：
-
-```bash
+# Ubuntu
 uv sync --locked
 ```
 
-## 13. 环境坏了怎样重建
+修改后在 Mac 运行通用测试，在 Ubuntu 运行 CUDA 冒烟与项目短任务。训练机上临时安装包却不更新声明，会让下一次重建无法复现当前环境。
 
-虚拟环境是可重建产物。确认源码和声明都安全后：
+虚拟环境本身属于可重建产物。确认源码和依赖文件安全后，环境损坏可以先保留旧目录，再创建新环境：
 
 ```bash
 mv .venv .venv.broken
 uv sync --locked
 ```
 
-验证新环境后再删除旧目录。不要一遇到 import 错误就先删除锁文件或升级全部依赖。
+venv 项目则重新创建并从 requirements 安装。新环境验证成功后再清理旧目录；若重建仍失败，应回到 Python 版本、包来源、声明或系统开发库调查。
 
-venv 路线：
+跨平台工作流最终只需坚持一件事：共享源码、测试、依赖声明、锁文件和配置模板；Mac 与 Ubuntu 分别创建解释器、平台二进制和 GPU 运行环境，并分别验证它们承担的任务。
 
-```bash
-mv .venv .venv.broken
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-```
-
-如果重建仍失败，问题更可能位于依赖声明、Python 版本、软件源或系统开发库，而不是旧环境缓存。
-
-## 14. 最终原则
-
-```text
-共享：源码、测试、依赖声明、锁文件和配置模板
-
-分别创建：解释器环境、平台二进制和 GPU 运行环境
-
-分别验证：Mac CPU/MPS 与 Ubuntu CUDA
-```
-
-## 继续阅读
-
-- [NVIDIA 驱动、CUDA 与 PyTorch](04-NVIDIA驱动-CUDA与PyTorch.md)
-- [项目同步与目录规范](02-项目同步与目录规范.md)
-- [VS Code、AI CLI 与 GPU 协作](07-VS-Code-AI-CLI与GPU协作.md)
+继续阅读：[依赖声明、锁定与环境复现](../Part-07-Python环境/03-依赖声明锁定与环境复现.md)、[NVIDIA 驱动、CUDA 与 PyTorch](04-NVIDIA驱动-CUDA与PyTorch.md)、[项目同步与目录规范](02-项目同步与目录规范.md)和[VS Code、AI CLI 与 GPU 协作](07-VS-Code-AI-CLI与GPU协作.md)。
 
 官方参考：
 

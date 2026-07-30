@@ -1,0 +1,7 @@
+{
+  "tag": "v3.0",
+  "name": "V3.0 — 全书叙事结构重构",
+  "notes_file": "RELEASE_NOTES_V3.0.md",
+  "target": "main",
+  "prerelease": false
+}

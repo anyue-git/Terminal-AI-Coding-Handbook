@@ -2,9 +2,7 @@
 
 > 最近核对：2026-07-30
 
-基础设施任务和普通代码修改最大的区别，是很多影响不会完整出现在 Git diff 中。SSH 配置、防火墙、系统服务、驱动、Docker Volume、远程数据和训练状态一旦改错，可能直接导致断连、数据丢失或环境不可用。
-
-因此，这类任务应采用：
+基础设施任务与普通代码修改最大的区别，是许多影响不会完整出现在 Git diff 中。SSH、防火墙、系统服务、驱动、Docker Volume、远程数据和训练状态一旦改错，可能导致断连、数据丢失或环境不可用，因此应始终采用：
 
 ```text
 观察
@@ -17,7 +15,9 @@
 → 检查恢复路径
 ```
 
-## 1. 通用诊断开场
+本章的模板不是让 Agent 自动管理机器，而是把高影响任务改写成可审查的诊断和变更卡片。
+
+## 1. 所有基础设施任务先使用同一诊断合同
 
 ```text
 当前阶段只做诊断。不要修改文件、安装软件、重启服务、使用 sudo、删除数据或改变网络规则。
@@ -34,7 +34,28 @@
 涉及凭据、远程连接、系统服务、磁盘、Docker Volume、驱动或数据删除时单独标明风险。
 ```
 
-## 2. SSH 连接失败
+诊断结束后不要一次串联多个高影响步骤。每个执行批次先输出：
+
+```text
+准备执行：
+- 主机：
+- 用户：
+- 目录：
+- 完整命令：
+- 读取内容：
+- 修改内容：
+- 是否需要 sudo：
+- 是否会断连或重启：
+- 预演或备份：
+- 成功判断：
+- 失败恢复：
+```
+
+人工确认后只执行这一批，并立即验证。
+
+## 2. 网络、SSH、Tailscale 与端口隧道
+
+SSH 失败时不要先改配置、删除 `known_hosts`、重建密钥或开放公网端口，而是沿名称解析、网络、TCP、sshd、主机身份和用户认证逐层检查：
 
 ```text
 请分析下面的 SSH 错误和已脱敏调试输出：
@@ -57,23 +78,13 @@
 每次只给一组最小检查，标明在客户端还是服务端执行，并解释不同结果如何决定下一步。
 ```
 
-不要把关闭主机身份验证或公网暴露 TCP 22 当作默认修复。
-
-## 3. 审查 SSH Config
+审查 SSH Config 时只提供脱敏配置，不包含私钥正文：
 
 ```text
 只读审查下面的 SSH Config，不要修改原文件：
 [REDACTED_CONFIG]
 
-不要包含私钥正文。
-
-请检查：
-- Host 与通配规则顺序；
-- HostName、User、Port；
-- IdentityFile 与 IdentitiesOnly；
-- ProxyJump；
-- ServerAlive 设置；
-- 是否引用不存在的路径。
+请检查 Host 与通配规则顺序、HostName、User、Port、IdentityFile、IdentitiesOnly、ProxyJump、ServerAlive 设置和不存在的路径。
 
 输出：
 1. 每个别名最终解析结果；
@@ -84,7 +95,41 @@
 6. 恢复原配置的方法。
 ```
 
-## 4. 设计 rsync 同步
+Tailscale 异网问题必须把组网可达性与普通 OpenSSH 登录分开：
+
+```text
+只读诊断 Tailscale 与普通 OpenSSH 的异网连接，不修改 ACL、Grants、路由、设备密钥或 SSH 配置。
+
+请按顺序检查：
+1. 两台设备是否在线；
+2. tailscale ping；
+3. direct 或 DERP；
+4. MagicDNS；
+5. Grants 是否允许目标端口；
+6. TCP 22；
+7. 普通 OpenSSH 主机指纹与用户认证。
+
+不要建议为解决 Tailscale 问题开放公网 22。
+```
+
+Jupyter、TensorBoard 或开发服务应只监听远端回环地址，再通过 SSH 隧道访问：
+
+```text
+请设计通过 SSH 隧道访问 [JUPYTER/TENSORBOARD/DEV_SERVER] 的方案。
+
+要求：
+- 服务只监听目标主机 127.0.0.1；
+- 不开放公网端口；
+- 明确服务端和客户端命令；
+- 使用非冲突本地端口；
+- 说明认证要求；
+- 给出端口占用、隧道断开和日志排查；
+- 异网时通过已验证的 Tailscale + OpenSSH 别名。
+```
+
+## 3. 文件同步、磁盘与数据删除
+
+设计 rsync 时必须明确源、目标、方向和目标端是否有独立生成内容：
 
 ```text
 请为下面的同步生成方案：
@@ -105,7 +150,29 @@
 7. 如果可能覆盖远端修改，停止并给出 Git 回收方案。
 ```
 
-## 5. Python 环境问题
+磁盘清理阶段只盘点，不生成通配符批量删除命令：
+
+```text
+当前阶段只盘点，不删除任何内容。
+
+目标目录：[PATH]
+
+请输出：
+1. 总体磁盘使用；
+2. 最大目录与文件；
+3. 哪些属于源码、环境、缓存、数据、模型、运行结果和 checkpoint；
+4. 哪些内容有 Git、远程副本、校验值或备份；
+5. 候选删除项及影响；
+6. 删除前同步和恢复方法。
+
+未经人工逐项确认，不执行 rm、find -delete、docker prune 或清理工具。
+```
+
+数据目录、Docker Volume、模型和 checkpoint 往往不受 Git 保护，候选删除项必须说明备份位置、校验方式和恢复成本。
+
+## 4. Python、Homebrew、Docker 与 GPU 运行栈
+
+Python 环境问题先确认解释器、pip、依赖声明和同名文件遮蔽，不安装或升级：
 
 ```text
 请只读诊断 Python 环境，不要安装、升级或卸载包，也不要修改系统 Python。
@@ -125,12 +192,10 @@
 - 是否有同名文件遮蔽包；
 - 项目依赖声明和锁文件。
 
-请区分解释器选错、环境未激活、包未安装、版本冲突、平台不兼容和项目导入问题，再给出最小修复和验证命令。不要建议 sudo pip install。
+区分解释器选错、环境未激活、包未安装、版本冲突、平台不兼容和项目导入问题，再给出最小修复与验证命令。不要建议 sudo pip install。
 ```
 
-Mac 与 Ubuntu 必须分别创建环境，不复制 `.venv`。
-
-## 6. Homebrew 与 PATH
+Mac 与 Ubuntu 必须分别创建环境，不能复制 `.venv`。Homebrew 与 PATH 问题也先只读：
 
 ```text
 请只读诊断 Homebrew 与 PATH，不要 install、uninstall、upgrade、cleanup、link、unlink 或重启服务。
@@ -138,20 +203,12 @@ Mac 与 Ubuntu 必须分别创建环境，不复制 `.venv`。
 目标命令：[COMMAND]
 现象：[ERROR]
 
-请检查：
-- uname -m；
-- brew --prefix；
-- type -a [COMMAND]；
-- command -v [COMMAND]；
-- 当前 PATH；
-- brew info [FORMULA]；
-- Shell 和启动文件；
-- 是否混用 Apple Silicon 与 Rosetta。
+请检查 uname -m、brew --prefix、type -a [COMMAND]、command -v [COMMAND]、当前 PATH、brew info [FORMULA]、Shell 启动文件，以及是否混用 Apple Silicon 与 Rosetta。
 
 给出最小修改、备份、验证和回滚方法。不要连续向 .zshrc 追加未经确认的 PATH。
 ```
 
-## 7. Docker 或 Compose 启动失败
+Docker 或 Compose 失败时，禁止默认执行清理：
 
 ```text
 请只读分析下面的 Docker 问题：
@@ -175,7 +232,7 @@ Mac 与 Ubuntu 必须分别创建环境，不复制 `.venv`。
 每个根因假设给出证据和最小验证。任何涉及持久数据的修改必须单独说明影响、备份和恢复方法，并等待人工确认。
 ```
 
-## 8. GPU 不可用
+GPU 问题按硬件、驱动、解释器、框架构建、真实运算、项目代码和 Toolkit 分层：
 
 ```text
 请分层分析 GPU 问题，不要先重装驱动、CUDA Toolkit 或整个 Python 环境。
@@ -198,19 +255,12 @@ Python：[INTERPRETER_OR_ENV]
 每层给出命令、判断标准和下一步。不要把 nvidia-smi 中的 CUDA Version 当作已安装 Toolkit 版本。
 ```
 
-## 9. NVIDIA 驱动变更计划
+驱动确实需要变更时，先只制定计划：
 
 ```text
 当前阶段只制定驱动变更计划，不执行安装、卸载、重启或 Secure Boot 修改。
 
-请先读取：
-- Ubuntu 版本；
-- GPU 型号；
-- 当前驱动；
-- ubuntu-drivers devices；
-- Secure Boot 状态；
-- 当前 nvidia-smi 错误；
-- 是否有正在运行的 GPU 任务。
+请先读取 Ubuntu 版本、GPU 型号、当前驱动、ubuntu-drivers devices、Secure Boot 状态、nvidia-smi 错误，以及是否有正在运行的 GPU 任务。
 
 方案必须说明：
 1. 为什么确认问题在驱动层；
@@ -222,7 +272,9 @@ Python：[INTERPRETER_OR_ENV]
 7. 安装后验证命令。
 ```
 
-## 10. 远程训练启动审查
+## 5. 远程训练与系统服务变更
+
+正式训练前让 Agent 只读审查运行现场，而不是直接启动：
 
 ```text
 只读审查下面的远程训练方案，不要启动训练，也不要修改系统配置。
@@ -246,42 +298,10 @@ Python：[INTERPRETER_OR_ENV]
 - 是否会覆盖旧实验；
 - 是否含凭据或私人路径。
 
-输出一份启动前清单，以及失败后从哪个 checkpoint 恢复。不要把完整环境变量写入日志。
+输出启动前清单，以及失败后从哪个 checkpoint 恢复。不要把完整环境变量写入日志。
 ```
 
-## 11. 远程服务或 Jupyter
-
-```text
-请设计通过 SSH 隧道访问 [JUPYTER/TENSORBOARD/DEV_SERVER] 的方案。
-
-要求：
-- 服务只监听目标主机 127.0.0.1；
-- 不开放公网端口；
-- 明确服务端和客户端命令；
-- 使用非冲突本地端口；
-- 说明认证要求；
-- 给出端口占用、隧道断开和日志排查；
-- 异网时通过已验证的 Tailscale + OpenSSH 别名。
-```
-
-## 12. Tailscale 异网故障
-
-```text
-只读诊断 Tailscale 与普通 OpenSSH 的异网连接，不修改 ACL、Grants、路由、设备密钥或 SSH 配置。
-
-请按顺序检查：
-1. 两台设备是否在线；
-2. tailscale ping；
-3. direct 或 DERP；
-4. MagicDNS；
-5. Grants 是否允许目标端口；
-6. TCP 22；
-7. 普通 OpenSSH 主机指纹与用户认证。
-
-把“组网可达性”和“SSH 登录”分开判断。不要建议为解决 Tailscale 问题开放公网 22。
-```
-
-## 13. 系统服务变更
+系统服务变更同样先建立证据和恢复路径：
 
 ```text
 当前阶段只制定 [SERVICE] 变更计划，不执行 sudo、restart、enable、disable 或文件覆盖。
@@ -298,46 +318,11 @@ Python：[INTERPRETER_OR_ENV]
 - 回滚命令。
 ```
 
-## 14. 数据删除或磁盘清理
+SSH、网络和远程服务变更必须保留备用会话或本机控制台；重启、驱动和防火墙操作不能与其他高影响变化合并成一条命令。
 
-```text
-当前阶段只盘点，不删除任何内容。
+## 6. 用完成报告封闭证据链
 
-目标目录：[PATH]
-
-请输出：
-1. 总体磁盘使用；
-2. 最大目录与文件；
-3. 哪些属于源码、环境、缓存、数据、模型、运行结果和 checkpoint；
-4. 哪些内容有 Git、远程副本、校验值或备份；
-5. 候选删除项及影响；
-6. 删除前同步和恢复方法。
-
-不要生成带通配符的批量删除命令。未经人工逐项确认，不执行 rm、find -delete、docker prune 或清理工具。
-```
-
-## 15. 执行阶段的固定格式
-
-诊断完成后，要求 Agent 每次只给一个变更批次：
-
-```text
-准备执行：
-- 主机：
-- 用户：
-- 目录：
-- 完整命令：
-- 读取内容：
-- 修改内容：
-- 是否需要 sudo：
-- 是否会断连或重启：
-- 预演或备份：
-- 成功判断：
-- 失败恢复：
-```
-
-人工确认后再执行。执行完立即验证，不要把五个高影响步骤一次性串成一条命令。
-
-## 16. 基础设施任务完成报告
+基础设施任务完成报告应说明：
 
 ```text
 问题层级：
@@ -361,7 +346,7 @@ Python：[INTERPRETER_OR_ENV]
 后续观察：
 ```
 
-基础设施任务只有在“服务恢复正常”之外，还能解释改了什么、怎样验证和怎样恢复，才算真正完成。
+只有“服务恢复正常”还不够；必须能解释改了什么、在哪台机器执行、怎样验证、哪些副作用不受 Git 保护，以及失败时怎样恢复。
 
 ## 延伸阅读
 

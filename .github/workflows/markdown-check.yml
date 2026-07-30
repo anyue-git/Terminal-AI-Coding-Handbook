@@ -4,13 +4,15 @@ on:
   push:
     branches:
       - main
-    paths-ignore:
-      - Appendix/自动检查报告.md
   pull_request:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: markdown-check-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   markdown-check:
@@ -23,8 +25,57 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check public export script syntax
+        shell: bash
+        run: bash -n scripts/export_public.sh
+
       - name: Show Python version
         run: python3 --version
+
+      - name: Check Python script syntax
+        shell: bash
+        run: |
+          python3 -m py_compile scripts/check_markdown.py
+          python3 -m py_compile scripts/audit_prose_structure.py
+          python3 -m py_compile scripts/audit_formulaic_style.py
+          python3 -m py_compile scripts/audit_sensitive_patterns.py
+          python3 -m py_compile scripts/audit_external_links.py
+          python3 -m py_compile scripts/test_audit_tools.py
+
+      - name: Run audit helper tests
+        shell: bash
+        run: python3 scripts/test_audit_tools.py
+
+      - name: Run prose structure audit
+        shell: bash
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            python3 scripts/audit_prose_structure.py \
+              --baseline-ref "origin/${{ github.base_ref }}" \
+              --report prose-structure-report.md \
+              --json prose-structure-report.json
+          else
+            python3 scripts/audit_prose_structure.py \
+              --report prose-structure-report.md \
+              --json prose-structure-report.json
+          fi
+
+      - name: Run formulaic style candidate audit
+        shell: bash
+        run: |
+          python3 scripts/audit_formulaic_style.py \
+            --report formulaic-style-report.md \
+            --json formulaic-style-report.json
+
+      - name: Upload narrative audit reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: prose-structure-report-${{ github.run_number }}
+          path: |
+            prose-structure-report.md
+            prose-structure-report.json
+            formulaic-style-report.md
+            formulaic-style-report.json
 
       - name: Run strict Markdown check and save output
         id: markdown_check
@@ -37,59 +88,12 @@ jobs:
           echo "status=$status" >> "$GITHUB_OUTPUT"
           exit 0
 
-      - name: Build Markdown report
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        env:
-          CHECK_STATUS: ${{ steps.markdown_check.outputs.status }}
-        run: |
-          if [ "$CHECK_STATUS" = "0" ]; then
-            result="通过"
-          else
-            result="发现错误或警告"
-          fi
-
-          {
-            echo '# Markdown 自动检查报告'
-            echo
-            echo "> 生成时间：$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-            echo "> 检查提交：\`${GITHUB_SHA}\`"
-            echo "> 结果：${result}"
-            echo
-            echo '执行命令：'
-            echo
-            echo '```bash'
-            echo 'python3 scripts/check_markdown.py --strict-warnings'
-            echo '```'
-            echo
-            echo '## 完整输出'
-            echo
-            echo '```text'
-            cat markdown-check-output.txt
-            echo '```'
-            echo
-            echo '## 说明'
-            echo
-            echo '- ERROR 会使工作流失败；'
-            echo '- WARN 在严格模式下也会使工作流失败；'
-            echo '- 外部网址默认不联网检查；'
-            echo '- 本报告由 GitHub Actions 自动生成。'
-          } > Appendix/自动检查报告.md
-
-      - name: Commit updated report
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: |
-          if git diff --quiet -- Appendix/自动检查报告.md; then
-            echo 'Report did not change.'
-            exit 0
-          fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Appendix/自动检查报告.md
-          git commit -m '更新：刷新 Markdown 自动检查报告'
-          git push
+      - name: Upload Markdown check output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: markdown-check-output-${{ github.run_number }}
+          path: markdown-check-output.txt
 
       - name: Fail when Markdown errors or warnings exist
         if: steps.markdown_check.outputs.status != '0'
