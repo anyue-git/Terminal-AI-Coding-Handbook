@@ -27,7 +27,7 @@ jobs:
       - name: Download validated public snapshot
         shell: bash
         env:
-          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-84a8-81fd-9955-7a8cbe39c405/raw?se=2026-07-30T11:51:45Z&sp=r&sv=2026-02-06&sr=b&scid=9bd8890e-75fc-5779-9ee8-37d2c9971ab3&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:34:52Z&ske=2026-07-31T23:34:52Z&sks=b&skv=2026-02-06&sig=9TWXQEbVQLma1SgVuHpAuHWmdGMC5/rp6qx9xuDWFPg%3D"
+          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-f940-81fd-b180-7fee3957b2e5/raw?se=2026-07-30T11:53:40Z&sp=r&sv=2026-02-06&sr=b&scid=da59b399-4a11-5cb7-94e0-060dece4e9f3&skoid=c69179d1-5b5d-430f-afa3-b9bdcf9d6497&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-29T23:31:34Z&ske=2026-07-31T23:31:34Z&sks=b&skv=2026-02-06&sig=2XKL81ERM94YoNamU5YUKsne%2BhXdqAB7eJrsZY4didY%3D"
         run: |
           curl --fail --location --retry 2 \
             --output "$RUNNER_TEMP/public-snapshot.zip" \
@@ -55,15 +55,15 @@ jobs:
             --exclude='/.git/' \
             "$snapshot/" ./
 
+          git add -A
           python3 scripts/check_markdown.py --strict-warnings
           python3 scripts/test_audit_tools.py
+          git diff --cached --check
 
       - name: Commit V3 public snapshot
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -A
-          git diff --cached --check
           git commit -m '发布 V3.0 公开快照'
           git push origin HEAD:release/v3.0
