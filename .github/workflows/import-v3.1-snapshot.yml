@@ -24,6 +24,8 @@ jobs:
   import:
     if: github.repository == 'anyue-git/Terminal-AI-Coding-Handbook'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
       - name: Checkout release branch
         uses: actions/checkout@v6
@@ -31,36 +33,43 @@ jobs:
           fetch-depth: 0
           ref: release/v3.1
 
-      - name: Download and verify audited snapshot
+      - name: Rebuild and verify audited delta
         shell: bash
         env:
-          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-9dc4-81fd-9de6-80cbb0c89e52/raw?se=2026-07-31T16:21:42Z&sp=r&sv=2026-02-06&sr=b&scid=7ddf7065-ceca-54ec-91e8-b681c7de79d1&skoid=456594af-533f-44ef-9bdc-35ea2f9daee5&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-31T11:29:00Z&ske=2026-08-02T11:29:00Z&sks=b&skv=2026-02-06&sig=xuBqi43z4a4oOYEtOI91W8k8yWaa%2BnAyMz3g72197W8%3D"
-          SNAPSHOT_SHA256: "745daabc04090dccee44c83db4c2102f5a0d7ad22c722f95e5e5203b515afe64"
+          DELTA_SHA256: "a5878762c0cc46ce3d98c0d6b8ab8b1f5b6931c4bee3d3f2c60e6c4cbc45c15c"
         run: |
           set -euo pipefail
-          curl --fail --location --retry 3 --retry-all-errors \
-            "$SNAPSHOT_URL" \
-            --output /tmp/public-snapshot-v3.1.zip
-          printf '%s  %s\n' "$SNAPSHOT_SHA256" /tmp/public-snapshot-v3.1.zip | sha256sum --check --strict
-          rm -rf /tmp/public-snapshot-v3.1
-          mkdir -p /tmp/public-snapshot-v3.1
-          unzip -q /tmp/public-snapshot-v3.1.zip -d /tmp/public-snapshot-v3.1
+          test "$(find .release-import/v3.1 -maxdepth 1 -type f -name 'part*' | wc -l | tr -d ' ')" = "8"
+          cat .release-import/v3.1/part* | base64 --decode > /tmp/v3.1-delta.zip
+          printf '%s  %s\n' "$DELTA_SHA256" /tmp/v3.1-delta.zip | sha256sum --check --strict
+          unzip -t /tmp/v3.1-delta.zip
 
-      - name: Validate snapshot identity
+      - name: Apply audited V3.1 delta
         shell: bash
         run: |
           set -euo pipefail
-          test -s /tmp/public-snapshot-v3.1/README.md
-          test -s /tmp/public-snapshot-v3.1/SUMMARY.md
-          test -s /tmp/public-snapshot-v3.1/LICENSE
-          test -s /tmp/public-snapshot-v3.1/RELEASE_NOTES_V3.1.md
-          test -s /tmp/public-snapshot-v3.1/.github/release.json
+          unzip -q -o /tmp/v3.1-delta.zip -d .
+          rm -rf .release-import
+          rm -f .github/workflows/import-v3.1-snapshot.yml
+          rm -f Appendix/自动检查报告.md
+
+      - name: Validate release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s README.md
+          test -s SUMMARY.md
+          test -s LICENSE
+          test -s RELEASE_NOTES_V3.1.md
+          test -s .github/release.json
+          test ! -e .release-import
+          test ! -e .github/workflows/import-v3.1-snapshot.yml
+          test ! -e Appendix/自动检查报告.md
           python3 - <<'PY'
           import json
           from pathlib import Path
 
-          root = Path('/tmp/public-snapshot-v3.1')
-          manifest = json.loads((root / '.github/release.json').read_text(encoding='utf-8'))
+          manifest = json.loads(Path('.github/release.json').read_text(encoding='utf-8'))
           expected = {
               'tag': 'v3.1',
               'name': 'V3.1 — Grok Build 功能体系补充',
@@ -71,12 +80,6 @@ jobs:
           if manifest != expected:
               raise SystemExit(f'unexpected release manifest: {manifest!r}')
           PY
-
-      - name: Replace branch with validated public snapshot
-        shell: bash
-        run: |
-          set -euo pipefail
-          rsync -a --delete --exclude='.git/' /tmp/public-snapshot-v3.1/ ./
 
       - name: Run public repository checks
         shell: bash
