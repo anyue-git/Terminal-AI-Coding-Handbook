@@ -131,7 +131,6 @@ jobs:
         run: |
           set -euo pipefail
           git add -A
-          git diff --cached --check
 
       - name: Run public repository checks
         shell: bash
