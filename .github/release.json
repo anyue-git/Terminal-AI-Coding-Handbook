@@ -1,7 +1,7 @@
 {
-  "tag": "v3.0",
-  "name": "V3.0 — 全书叙事结构重构",
-  "notes_file": "RELEASE_NOTES_V3.0.md",
+  "tag": "v3.1",
+  "name": "V3.1 — Grok Build 功能体系补充",
+  "notes_file": "RELEASE_NOTES_V3.1.md",
   "target": "main",
   "prerelease": false
 }
