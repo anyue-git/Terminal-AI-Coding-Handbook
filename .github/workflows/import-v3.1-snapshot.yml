@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(find .release-import/v3.1 -maxdepth 1 -type f -name 'part*' | wc -l | tr -d ' ')" = "8"
-          cat .release-import/v3.1/part* | base64 --decode > /tmp/v3.1-delta.zip
+          cat .release-import/v3.1/part* | base64 --decode --ignore-garbage > /tmp/v3.1-delta.zip
           printf '%s  %s\n' "$DELTA_SHA256" /tmp/v3.1-delta.zip | sha256sum --check --strict
           unzip -t /tmp/v3.1-delta.zip
 
