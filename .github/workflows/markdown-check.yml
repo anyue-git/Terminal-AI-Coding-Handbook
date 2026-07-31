@@ -8,13 +8,101 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: markdown-check-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
+  import-v3.1-snapshot:
+    if: github.event_name == 'pull_request' && github.head_ref == 'release/v3.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: release/v3.1
+
+      - name: Download and verify audited snapshot
+        shell: bash
+        env:
+          SNAPSHOT_URL: "https://sdmntprwestus3.oaiusercontent.com/files/00000000-9dc4-81fd-9de6-80cbb0c89e52/raw?se=2026-07-31T16:21:42Z&sp=r&sv=2026-02-06&sr=b&scid=7ddf7065-ceca-54ec-91e8-b681c7de79d1&skoid=456594af-533f-44ef-9bdc-35ea2f9daee5&sktid=a48cca56-e6da-484e-a814-9c849652bcb3&skt=2026-07-31T11:29:00Z&ske=2026-08-02T11:29:00Z&sks=b&skv=2026-02-06&sig=xuBqi43z4a4oOYEtOI91W8k8yWaa%2BnAyMz3g72197W8%3D"
+          SNAPSHOT_SHA256: "745daabc04090dccee44c83db4c2102f5a0d7ad22c722f95e5e5203b515afe64"
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 3 --retry-all-errors \
+            "$SNAPSHOT_URL" \
+            --output /tmp/public-snapshot-v3.1.zip
+          printf '%s  %s\n' "$SNAPSHOT_SHA256" /tmp/public-snapshot-v3.1.zip | sha256sum --check --strict
+          rm -rf /tmp/public-snapshot-v3.1
+          mkdir -p /tmp/public-snapshot-v3.1
+          unzip -q /tmp/public-snapshot-v3.1.zip -d /tmp/public-snapshot-v3.1
+
+      - name: Validate snapshot identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s /tmp/public-snapshot-v3.1/README.md
+          test -s /tmp/public-snapshot-v3.1/SUMMARY.md
+          test -s /tmp/public-snapshot-v3.1/LICENSE
+          test -s /tmp/public-snapshot-v3.1/RELEASE_NOTES_V3.1.md
+          test -s /tmp/public-snapshot-v3.1/.github/release.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          root = Path('/tmp/public-snapshot-v3.1')
+          manifest = json.loads((root / '.github/release.json').read_text(encoding='utf-8'))
+          expected = {
+              'tag': 'v3.1',
+              'name': 'V3.1 — Grok Build 功能体系补充',
+              'notes_file': 'RELEASE_NOTES_V3.1.md',
+              'target': 'main',
+              'prerelease': False,
+          }
+          if manifest != expected:
+              raise SystemExit(f'unexpected release manifest: {manifest!r}')
+          PY
+
+      - name: Replace branch with validated public snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -a --delete --exclude='.git/' /tmp/public-snapshot-v3.1/ ./
+
+      - name: Run public repository checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/export_public.sh
+          python3 -m py_compile \
+            scripts/check_markdown.py \
+            scripts/audit_prose_structure.py \
+            scripts/audit_formulaic_style.py \
+            scripts/audit_sensitive_patterns.py \
+            scripts/audit_external_links.py \
+            scripts/test_audit_tools.py
+          python3 scripts/test_audit_tools.py
+          python3 scripts/check_markdown.py --strict-warnings
+
+      - name: Commit audited V3.1 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'anyue-git'
+          git config user.email '192072042+anyue-git@users.noreply.github.com'
+          git add -A
+          if git diff --cached --quiet; then
+            echo 'Public snapshot already matches the release branch.'
+            exit 0
+          fi
+          git commit -m '发布 V3.1 公共快照'
+          git push origin HEAD:release/v3.1
+
   markdown-check:
     runs-on: ubuntu-latest
     timeout-minutes: 5
