@@ -33,11 +33,11 @@
 - **Part 08 · Docker**：[镜像、容器、卷与网络](Part-08-Docker/01-镜像容器卷与网络.md) · [Docker Desktop 与 Ubuntu Docker Engine](Part-08-Docker/02-Docker-Desktop与Ubuntu-Docker-Engine.md) · [Docker Compose 多服务项目](Part-08-Docker/03-Docker-Compose多服务项目.md) · [GPU 容器与权限边界](Part-08-Docker/04-GPU容器与权限边界.md)
 - **Part 09 · Claude Code**：[安装、登录与启动](Part-09-Claude-Code/01-安装登录与启动.md) · [权限、审批与安全边界](Part-09-Claude-Code/02-权限审批与安全边界.md) · [会话、记忆、Hooks 与 MCP](Part-09-Claude-Code/03-会话记忆Hooks与MCP.md) · [大项目与多阶段任务](Part-09-Claude-Code/04-大项目与多阶段任务工作流.md) · [接入 DeepSeek 与第三方供应商](Part-09-Claude-Code/05-接入DeepSeek与第三方供应商.md)
 - **Part 10 · Codex CLI**：[安装、登录与启动](Part-10-Codex-CLI/01-安装登录与启动.md) · [Sandbox、审批与配置](Part-10-Codex-CLI/02-Sandbox审批与配置.md) · [交互模式与自动化](Part-10-Codex-CLI/03-交互模式与自动化.md) · [Codex CLI 与 Git 协作案例](Part-10-Codex-CLI/04-Codex与Git协作案例.md)
-- **Part 10B · Grok Build**：[安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md) · [权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md) · [Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md)
+- **Part 10B · Grok Build**：[安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md) · [权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md) · [Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md) · [TUI、斜杠命令与交互界面](Part-10B-Grok-CLI/04-TUI斜杠命令与交互界面.md) · [会话、Memory 与后台任务](Part-10B-Grok-CLI/05-会话快照Memory与后台任务.md) · [Goal、Workflow 与多 Agent 系统](Part-10B-Grok-CLI/06-Goal-Workflow与多Agent系统.md) · [扩展系统、MCP、ACP 与跨客户端兼容](Part-10B-Grok-CLI/07-扩展系统MCP-ACP与跨客户端兼容.md) · [配置、模型、诊断与功能核对](Part-10B-Grok-CLI/08-配置模型诊断与功能核对.md) · [终端子命令与完整功能索引](Part-10B-Grok-CLI/09-终端子命令与完整功能索引.md)
 - **Part 10C · 配置、凭证与多实例**：[先分清配置、凭证、供应商与实例](Part-10C-配置凭证与多实例/01-先分清配置凭证供应商与实例.md) · [Codex 的 TOML、Profile 与凭证](Part-10C-配置凭证与多实例/02-Codex-TOML配置与凭证.md) · [Claude Code 的配置、凭证与网关](Part-10C-配置凭证与多实例/03-Claude-Code配置凭证与网关.md) · [CC Switch、ccswitch 与 Cockpit Tools](Part-10C-配置凭证与多实例/04-CC-Switch-ccswitch与Cockpit-Tools.md)
 - **Part 11 · GPU 远程开发**：[Mac 与 Ubuntu 局域网部署](Part-11-GPU远程开发/01-Mac与Ubuntu局域网部署.md) · [项目同步与目录规范](Part-11-GPU远程开发/02-项目同步与目录规范.md) · [tmux 与断线续跑](Part-11-GPU远程开发/03-tmux与断线续跑.md) · [NVIDIA 驱动、CUDA 与 PyTorch](Part-11-GPU远程开发/04-NVIDIA驱动-CUDA与PyTorch.md) · [Mac 与 Ubuntu 分别创建环境](Part-11-GPU远程开发/05-Mac与Ubuntu分别创建环境.md) · [异网安全连接](Part-11-GPU远程开发/06-异网安全连接.md) · [VS Code、AI CLI 与 GPU 协作](Part-11-GPU远程开发/07-VS-Code-AI-CLI与GPU协作.md) · [实验日志与 Checkpoint 管理](Part-11-GPU远程开发/08-实验日志与Checkpoint管理.md)
 - **Part 12 · AI 开发工作流**：[通用 AI 编程闭环](Part-12-AI开发工作流/01-通用AI编程闭环.md) · [通用 Prompt 模板库](Part-12-AI开发工作流/02-通用Prompt模板库.md) · [基础设施与远程开发 Prompt](Part-12-AI开发工作流/03-基础设施Prompt模板.md) · [权限与安全边界总览](Part-12-AI开发工作流/04-权限与安全边界总览.md) · [复杂任务拆分与独立复核](Part-12-AI开发工作流/05-复杂任务拆分与独立复核.md) · [Claude Code、Codex CLI 与 Grok Build 协作](Part-12-AI开发工作流/06-Claude-Code-Codex-Grok对照与协作.md) · [Mac 到 Ubuntu GPU 端到端案例](Part-12-AI开发工作流/07-Mac到Ubuntu-GPU端到端案例.md)
-- **附录与速查**：[快捷键速查表](Appendix/快捷键速查表.md) · [危险命令清单](Appendix/危险命令清单.md) · [术语表](Appendix/术语表.md) · [版本化工具核对表](Appendix/版本化工具核对表.md) · [内容审查记录](Appendix/内容审查记录.md) · [更新记录](Appendix/更新记录.md)
+- **附录与速查**：[快捷键速查表](Appendix/快捷键速查表.md) · [危险命令清单](Appendix/危险命令清单.md) · [术语表](Appendix/术语表.md) · [版本化工具核对表](Appendix/版本化工具核对表.md) · [V3.1 Grok Build 专项审查](Appendix/V3.1-Grok-Build专项审查.md) · [内容审查记录](Appendix/内容审查记录.md) · [更新记录](Appendix/更新记录.md)
 
 ## 你会在这本手册里完成什么
 
@@ -53,6 +53,8 @@ Part 01–03 帮你建立 Terminal、Shell、zsh、路径、输入输出和进�
 
 ## 项目与许可证
 
-V1.0 与 V2.0 作为历史版本保留，V3.0 已完成叙事重构、内容覆盖反查和公开仓库同步，并已合并到公共 `main`。V3.0 的重构方法与审计过程见[V3.0 路线图](V3.0-ROADMAP.md)，完整变化见[V3.0 发布说明](RELEASE_NOTES_V3.0.md)。版本标签和 GitHub Release 可在最终发布时单独创建。
+V1.0 与 V2.0 作为历史版本保留，V3.0 已完成叙事重构、内容覆盖反查和公共仓库发布。V3.0 的重构方法与审计过程见[V3.0 路线图](V3.0-ROADMAP.md)，完整变化见[V3.0 发布说明](RELEASE_NOTES_V3.0.md)。
+
+V3.1 是 V3.0 后的 Grok Build 专项补充，当前仍在私有源仓库 Draft PR 中开发，尚未合并或同步到公共仓库。更新范围与验证边界见[V3.1 发布说明](RELEASE_NOTES_V3.1.md)和[V3.1 Grok Build 专项审查](Appendix/V3.1-Grok-Build专项审查.md)。
 
 本项目采用双许可证：正文、解释、表格和练习使用 CC BY-NC-SA 4.0；脚本、工作流、命令和配置示例使用 MIT License。详细条款见[LICENSE](LICENSE)，写作和审查约定见[CONTRIBUTING.md](CONTRIBUTING.md)。

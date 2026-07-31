@@ -32,6 +32,9 @@ internal/
 *.private.*
 *.internal.*
 
+# 旧版工作流生成的静态报告；当前检查结果只保留为 Actions Artifact
+Appendix/自动检查报告.md
+
 # 仅供私有源仓库运行的发布审计工作流
 .github/workflows/source-release-audit.yml
 

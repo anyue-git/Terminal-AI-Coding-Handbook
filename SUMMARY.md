@@ -13,6 +13,7 @@
 - [项目介绍](README.md)
 - [全书路线图](ROADMAP.md)
 - [V3.0 叙事重构路线图](V3.0-ROADMAP.md)
+- [V3.1 发布说明草案](RELEASE_NOTES_V3.1.md)
 - [V3.0 发布说明](RELEASE_NOTES_V3.0.md)
 - [V2.0 发布说明](RELEASE_NOTES_V2.0.md)
 - [写作规范与内容审查标准](CONTRIBUTING.md)
@@ -92,6 +93,12 @@
 - [01 安装、登录与基础使用](Part-10B-Grok-CLI/01-安装登录与基础使用.md)
 - [02 权限、Sandbox 与项目配置](Part-10B-Grok-CLI/02-权限Sandbox与项目配置.md)
 - [03 Headless、Worktree 与扩展系统](Part-10B-Grok-CLI/03-Headless-Worktree与扩展系统.md)
+- [04 TUI、斜杠命令与交互界面](Part-10B-Grok-CLI/04-TUI斜杠命令与交互界面.md)
+- [05 会话、Memory 与后台任务](Part-10B-Grok-CLI/05-会话快照Memory与后台任务.md)
+- [06 Goal、Workflow 与多 Agent 系统](Part-10B-Grok-CLI/06-Goal-Workflow与多Agent系统.md)
+- [07 扩展系统、MCP、ACP 与跨客户端兼容](Part-10B-Grok-CLI/07-扩展系统MCP-ACP与跨客户端兼容.md)
+- [08 配置、模型、诊断与功能核对](Part-10B-Grok-CLI/08-配置模型诊断与功能核对.md)
+- [09 终端子命令与完整功能索引](Part-10B-Grok-CLI/09-终端子命令与完整功能索引.md)
 
 ## Part 10C：配置、凭证与多实例
 
@@ -130,6 +137,7 @@
 - [术语表](Appendix/术语表.md)
 - [版本化工具核对表](Appendix/版本化工具核对表.md)
 - [公开仓库发布流程](Appendix/公开发布流程.md)
+- [V3.1 Grok Build 专项审查](Appendix/V3.1-Grok-Build专项审查.md)
 - [V3.0 叙事结构审计](Appendix/V3.0-叙事结构审计.md)
 - [V3.0 文风二次审查](Appendix/V3.0-文风二次审查.md)
 - [V3.0 样章内容覆盖](Appendix/V3.0-样章内容覆盖.md)
