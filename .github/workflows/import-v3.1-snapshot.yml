@@ -1,0 +1,153 @@
+name: Import V3.1 Public Snapshot
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/import-v3.1-snapshot.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-v3.1-public-snapshot
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.repository == 'anyue-git/Terminal-AI-Coding-Handbook' && github.event.pull_request.head.ref == 'release/v3.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: release/v3.1
+
+      - name: Rebuild audited delta from verified Git blobs
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          DELTA_SHA256: a5878762c0cc46ce3d98c0d6b8ab8b1f5b6931c4bee3d3f2c60e6c4cbc45c15c
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          repository = 'anyue-git/Terminal-AI-Coding-Handbook'
+          blobs = [
+              '8c1f340f615c6a89e5b5375924cefc91639156bc',
+              '71df42d89beae320982a5c985198cf1753f98ca8',
+              '50c9c24a1838f421676d35f9cace992215fdfed1',
+              'dacdb7619c8fbb485cca13fd540c7072a24f4f9c',
+              '6d2208df3522b44d44bf66018a0b2e8c98a12eb8',
+              '7b17c14984ba8738185a8b1ddbb998eccf72a1f5',
+              '83d16c8b0c509b734cb4d741f7a85f1d45e25f8a',
+              'b5ab8eff749818a725056199ec53b1959fbea44e',
+              'b0ce2589f9d927bd838c40c8ad2ddc55224967a8',
+              'cc43682dc74b9be8e9cbf98282db4a2ddab90367',
+              '575cfc5dd005d7502f43fbc8217fb11fb4a31b7b',
+              '286b4a60be6fd770fba379a854a2299e3b1e332d',
+              'b48385ef996b854b41b5904487bd5941a10741a9',
+              'a76413239e827ed92c992d58043ad098f15c5d03',
+              'e6d5c8a5a80277e00065724a571f92e022500f82',
+              '2deb7b34f6829f39b352c7d2510e26e3dfc0e12a',
+              '5fe894f7cf2b451f230b32a2e2908f2fea2be6e7',
+              'b359cda5c51d1dac88aa3d4bc96f378c1946074e',
+              '1c081a37bcf53e9f47d52cb3fd7821bc86c76735',
+              '848f891da0b8677725e81b26f9ecce0622a08020',
+              '5d15b263e4c1b0610f8dddb26291322df9a136fc',
+              'dedcf8560fb1caa1f80e7809e441945824d7d43b',
+              '36f577e10ae61b2981ae2b9003fb3cadcf900382',
+          ]
+          token = os.environ['GITHUB_TOKEN']
+          output = bytearray()
+          for sha in blobs:
+              request = urllib.request.Request(
+                  f'https://api.github.com/repos/{repository}/git/blobs/{sha}',
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Accept': 'application/vnd.github+json',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                  },
+              )
+              with urllib.request.urlopen(request) as response:
+                  payload = json.load(response)
+              if payload.get('encoding') != 'base64':
+                  raise SystemExit(f'unexpected blob encoding for {sha}')
+              output.extend(base64.b64decode(payload['content']))
+          if len(output) != 105028:
+              raise SystemExit(f'unexpected encoded delta length: {len(output)}')
+          Path('/tmp/v3.1-delta.b64').write_bytes(output)
+          PY
+          base64 --decode /tmp/v3.1-delta.b64 > /tmp/v3.1-delta.zip
+          printf '%s  %s\n' "$DELTA_SHA256" /tmp/v3.1-delta.zip | sha256sum --check --strict
+          unzip -t /tmp/v3.1-delta.zip
+
+      - name: Apply audited V3.1 delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          unzip -q -o /tmp/v3.1-delta.zip -d .
+          rm -f Appendix/自动检查报告.md
+          rm -f .github/workflows/import-v3.1-snapshot.yml
+
+      - name: Validate release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s README.md
+          test -s SUMMARY.md
+          test -s LICENSE
+          test -s RELEASE_NOTES_V3.1.md
+          test -s .github/release.json
+          test ! -e Appendix/自动检查报告.md
+          test ! -e .github/workflows/import-v3.1-snapshot.yml
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest = json.loads(Path('.github/release.json').read_text(encoding='utf-8'))
+          expected = {
+              'tag': 'v3.1',
+              'name': 'V3.1 — Grok Build 功能体系补充',
+              'notes_file': 'RELEASE_NOTES_V3.1.md',
+              'target': 'main',
+              'prerelease': False,
+          }
+          if manifest != expected:
+              raise SystemExit(f'unexpected release manifest: {manifest!r}')
+          PY
+
+      - name: Run public repository checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/export_public.sh
+          python3 -m py_compile \
+            scripts/check_markdown.py \
+            scripts/audit_prose_structure.py \
+            scripts/audit_formulaic_style.py \
+            scripts/audit_sensitive_patterns.py \
+            scripts/audit_external_links.py \
+            scripts/test_audit_tools.py
+          python3 scripts/test_audit_tools.py
+          python3 scripts/check_markdown.py --strict-warnings
+
+      - name: Commit audited V3.1 snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'anyue-git'
+          git config user.email '192072042+anyue-git@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m '发布 V3.1 公共快照'
+          git push origin HEAD:release/v3.1
