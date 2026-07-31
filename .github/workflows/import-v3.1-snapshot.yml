@@ -126,6 +126,13 @@ jobs:
               raise SystemExit(f'unexpected release manifest: {manifest!r}')
           PY
 
+      - name: Stage audited snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -A
+          git diff --cached --check
+
       - name: Run public repository checks
         shell: bash
         run: |
@@ -147,7 +154,5 @@ jobs:
           set -euo pipefail
           git config user.name 'anyue-git'
           git config user.email '192072042+anyue-git@users.noreply.github.com'
-          git add -A
-          git diff --cached --check
           git commit -m '发布 V3.1 公共快照'
           git push origin HEAD:release/v3.1
